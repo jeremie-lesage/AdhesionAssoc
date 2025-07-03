@@ -17,9 +17,11 @@
 <script setup lang="ts">
 import { useFormStore } from '@/stores/form';
 import axios from 'axios';
+import { useRouter } from 'vue-router';
 
 const store = useFormStore();
 const formData = store.formData;
+const router = useRouter();
 
 const prevStep = () => {
   store.prevStep();
@@ -31,11 +33,14 @@ const submitForm = async () => {
     if (store.formData.code) {
       response = await axios.put(`http://localhost:8000/api/adhesions/${store.formData.code}`, store.formData);
       alert(`Formulaire mis à jour !`);
+      store.resetForm();
+      router.push('/'); // Redirige vers la page d'accueil après la mise à jour
     } else {
       response = await axios.post('http://localhost:8000/api/adhesions', store.formData);
-      alert(`Formulaire validé ! Votre code d\'accès est : ${response.data.code}`);
+      store.lastGeneratedCode = response.data.code; // Stocke le code
+      store.resetForm(); // Réinitialise le formulaire mais garde le code
+      router.push('/confirmation'); // Redirige vers la page de confirmation
     }
-    store.resetForm();
   } catch (error) {
     console.error(error);
     alert('Une erreur est survenue lors de la validation du formulaire.');

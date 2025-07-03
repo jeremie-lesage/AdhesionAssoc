@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import LoadForm from '../views/LoadForm.vue'
 import AdminView from '../views/AdminView.vue'
+import ConfirmationPage from '../views/ConfirmationPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,11 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: AdminView
+    },
+    {
+      path: '/confirmation',
+      name: 'confirmation',
+      component: ConfirmationPage
     }
   ]
 })

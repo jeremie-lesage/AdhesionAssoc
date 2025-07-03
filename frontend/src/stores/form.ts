@@ -12,6 +12,7 @@ export const useFormStore = defineStore('form', {
       activites: [] as string[],
       code: null as string | null,
     },
+    lastGeneratedCode: null as string | null, // Nouveau champ pour le code généré
   }),
   actions: {
     nextStep() {
@@ -35,6 +36,7 @@ export const useFormStore = defineStore('form', {
         activites: [],
         code: null,
       };
+      this.lastGeneratedCode = null;
     },
   },
 });
