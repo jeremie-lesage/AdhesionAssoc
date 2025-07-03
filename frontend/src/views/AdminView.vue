@@ -1,6 +1,7 @@
 <template>
   <div>
     <h2>Administration des Adhésions</h2>
+    <RouterLink to="/admin/activities" class="button">Gérer les Activités</RouterLink>
     <p v-if="loading">Chargement des adhésions...</p>
     <p v-if="error">Erreur lors du chargement des adhésions: {{ error }}</p>
     <table v-if="adhesions.length">
@@ -34,7 +35,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { useRouter, RouterLink } from 'vue-router';
 import { useFormStore } from '@/stores/form';
 
 const adhesions = ref([]);

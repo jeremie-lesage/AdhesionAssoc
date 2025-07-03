@@ -4,6 +4,7 @@ import NewAdhesionForm from '../views/NewAdhesionForm.vue'
 import LoadForm from '../views/LoadForm.vue'
 import AdminView from '../views/AdminView.vue'
 import ConfirmationPage from '../views/ConfirmationPage.vue'
+import ActivityAdmin from '../views/ActivityAdmin.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: AdminView
+    },
+    {
+      path: '/admin/activities',
+      name: 'admin-activities',
+      component: ActivityAdmin
     },
     {
       path: '/confirmation',

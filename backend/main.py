@@ -32,6 +32,7 @@ def get_db_connection():
 
 def create_tables():
     conn = get_db_connection()
+    conn.execute("PRAGMA foreign_keys = ON;") # Enable foreign key support
     conn.execute('''
         CREATE TABLE IF NOT EXISTS adhesions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,6 +85,18 @@ class AdhesionCreate(AdhesionBase):
 class Adhesion(AdhesionBase):
     id: int
     code: str
+
+    class Config:
+        from_attributes = True
+
+class ActivityBase(BaseModel):
+    name: str
+
+class ActivityCreate(ActivityBase):
+    pass
+
+class Activity(ActivityBase):
+    id: int
 
     class Config:
         from_attributes = True
@@ -208,3 +221,36 @@ def update_adhesion(code: str, adhesion: AdhesionCreate):
     updated_adhesion_data['activites'] = [row['name'] for row in activities_rows]
 
     return Adhesion(**updated_adhesion_data)
+
+@app.get("/api/activities", response_model=List[Activity])
+def list_activities():
+    conn = get_db_connection()
+    activities = conn.execute("SELECT * FROM activities").fetchall()
+    conn.close()
+    return [Activity(**dict(row)) for row in activities]
+
+@app.post("/api/activities", response_model=Activity, status_code=201)
+def create_activity(activity: ActivityCreate):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO activities (name) VALUES (?) RETURNING id", (activity.name,))
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Activity with this name already exists")
+    finally:
+        conn.close()
+    return Activity(id=new_id, name=activity.name)
+
+@app.delete("/api/activities/{activity_id}", status_code=204)
+def delete_activity(activity_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM activities WHERE id = ?", (activity_id,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Activity not found")
+    conn.close()
