@@ -59,7 +59,7 @@ const editAdhesion = async (code: string) => {
     const response = await axios.get(`http://localhost:8000/api/adhesions/${code}`);
     formStore.formData = response.data;
     formStore.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
-    router.push('/'); // Redirige vers la page du formulaire
+    router.push('/adhesion'); // Redirige vers la page du formulaire
   } catch (err) {
     alert(`Impossible de charger le formulaire pour le code ${code}: ${err.message}`);
   }

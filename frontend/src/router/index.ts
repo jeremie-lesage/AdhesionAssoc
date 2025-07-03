@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import NewAdhesionForm from '../views/NewAdhesionForm.vue'
 import LoadForm from '../views/LoadForm.vue'
 import AdminView from '../views/AdminView.vue'
 import ConfirmationPage from '../views/ConfirmationPage.vue'
@@ -10,7 +11,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: HomeView
+    },
+    {
+      path: '/adhesion',
+      name: 'adhesion',
+      component: NewAdhesionForm
     },
     {
       path: '/load',

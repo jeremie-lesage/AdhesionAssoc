@@ -26,7 +26,7 @@ const loadForm = async () => {
     const response = await axios.get(`http://localhost:8000/api/adhesions/${code.value}`);
     store.formData = response.data;
     store.formData.code = response.data.code; // Stocker le code
-    router.push('/');
+    router.push('/adhesion');
   } catch (error) {
     console.error(error);
     alert('Code invalide ou formulaire non trouvé.');
