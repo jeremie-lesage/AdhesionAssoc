@@ -11,6 +11,7 @@ export const useFormStore = defineStore('form', {
       adresse_postale: '',
       activites: [] as string[],
       code: null as string | null,
+      status: 'pending' as string,
     },
     lastGeneratedCode: null as string | null, // Nouveau champ pour le code généré
   }),
@@ -35,6 +36,7 @@ export const useFormStore = defineStore('form', {
         adresse_postale: '',
         activites: [],
         code: null,
+        status: 'pending',
       };
       this.lastGeneratedCode = null;
     },

@@ -24,9 +24,13 @@ const code = ref('');
 const loadForm = async () => {
   try {
     const response = await axios.get(`http://localhost:8000/api/adhesions/${code.value}`);
+    if (response.data.status === 'validated') {
+      alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
+      return;
+    }
     store.formData = response.data;
-    store.formData.code = response.data.code; // Stocker le code
-    router.push('/adhesion');
+    store.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
+    router.push('/');
   } catch (error) {
     console.error(error);
     alert('Code invalide ou formulaire non trouvé.');

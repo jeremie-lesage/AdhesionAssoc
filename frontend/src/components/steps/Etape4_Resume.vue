@@ -28,6 +28,10 @@ const prevStep = () => {
 };
 
 const submitForm = async () => {
+  if (store.formData.status === 'validated') {
+    alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
+    return;
+  }
   try {
     let response;
     if (store.formData.code) {

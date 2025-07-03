@@ -41,7 +41,8 @@ def create_tables():
             nom TEXT,
             prenom TEXT,
             date_naissance TEXT,
-            adresse_postale TEXT
+            adresse_postale TEXT,
+            status TEXT DEFAULT 'pending'
         )
     ''')
     conn.execute('''
@@ -85,6 +86,7 @@ class AdhesionCreate(AdhesionBase):
 class Adhesion(AdhesionBase):
     id: int
     code: str
+    status: str
 
     class Config:
         from_attributes = True
@@ -120,6 +122,7 @@ def list_adhesions():
             (adhesion_data['id'],)
         ).fetchall()
         adhesion_data['activites'] = [r['name'] for r in activities_rows]
+        adhesion_data['status'] = row['status'] # Add status
         result.append(adhesion_data)
     conn.close()
     return result
@@ -153,7 +156,7 @@ def create_adhesion(adhesion: AdhesionCreate):
     finally:
         conn.close()
     
-    return Adhesion(id=new_id, code=code, **adhesion.dict())
+    return Adhesion(id=new_id, code=code, status="pending", **adhesion.dict())
 
 @app.get("/api/adhesions/{code}", response_model=Adhesion)
 def read_adhesion(code: str):
@@ -176,11 +179,37 @@ def read_adhesion(code: str):
     
     return Adhesion(**adhesion_data)
 
+@app.put("/api/adhesions/{code}/validate", response_model=Adhesion)
+def validate_adhesion(code: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE adhesions SET status = 'validated' WHERE code = ? AND status = 'pending'", (code,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Adhesion not found or already validated")
+    
+    updated_adhesion_row = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
+    adhesion_data = dict(updated_adhesion_row)
+    
+    activities_rows = conn.execute(
+        "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
+        (adhesion_data['id'],)
+    ).fetchall()
+    adhesion_data['activites'] = [row['name'] for row in activities_rows]
+    conn.close()
+    return Adhesion(**adhesion_data)
 
 @app.put("/api/adhesions/{code}", response_model=Adhesion)
 def update_adhesion(code: str, adhesion: AdhesionCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Check if adhesion is already validated
+    current_status_row = conn.execute("SELECT status FROM adhesions WHERE code = ?", (code,)).fetchone()
+    if current_status_row and current_status_row['status'] == 'validated':
+        conn.close()
+        raise HTTPException(status_code=403, detail="Cannot update a validated adhesion")
     
     # Update adhesion details
     cursor.execute(

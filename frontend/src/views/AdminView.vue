@@ -12,6 +12,7 @@
           <th>Nom</th>
           <th>Prénom</th>
           <th>Activités</th>
+          <th>Statut</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -22,8 +23,10 @@
           <td>{{ adhesion.nom }}</td>
           <td>{{ adhesion.prenom }}</td>
           <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
+          <td>{{ adhesion.status }}</td>
           <td>
             <button @click="editAdhesion(adhesion.code)">Corriger</button>
+            <button v-if="adhesion.status === 'pending'" @click="validateAdhesion(adhesion.code)" class="validate-button">Valider</button>
           </td>
         </tr>
       </tbody>
@@ -44,7 +47,9 @@ const error = ref(null);
 const router = useRouter();
 const formStore = useFormStore();
 
-onMounted(async () => {
+const fetchAdhesions = async () => {
+  loading.value = true;
+  error.value = null;
   try {
     const response = await axios.get('http://localhost:8000/api/adhesions');
     adhesions.value = response.data;
@@ -53,7 +58,9 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-});
+};
+
+onMounted(fetchAdhesions);
 
 const editAdhesion = async (code: string) => {
   try {
@@ -63,6 +70,17 @@ const editAdhesion = async (code: string) => {
     router.push('/adhesion'); // Redirige vers la page du formulaire
   } catch (err) {
     alert(`Impossible de charger le formulaire pour le code ${code}: ${err.message}`);
+  }
+};
+
+const validateAdhesion = async (code: string) => {
+  if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ?')) return;
+  try {
+    await axios.put(`http://localhost:8000/api/adhesions/${code}/validate`);
+    alert('Adhésion validée avec succès !');
+    fetchAdhesions(); // Recharger la liste
+  } catch (err) {
+    alert(`Erreur lors de la validation de l'adhésion: ${err.response?.data?.detail || err.message}`);
   }
 };
 </script>
@@ -82,5 +100,14 @@ th, td {
 
 th {
   background-color: #f2f2f2;
+}
+
+.validate-button {
+  background-color: #28a745;
+  margin-left: 10px;
+}
+
+.validate-button:hover {
+  background-color: #218838;
 }
 </style>
