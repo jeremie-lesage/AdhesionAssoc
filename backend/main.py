@@ -66,7 +66,7 @@ class Adhesion(AdhesionBase):
     code: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Helper function
 def generate_random_code(length=8):
@@ -74,6 +74,13 @@ def generate_random_code(length=8):
     return ''.join(random.choice(letters) for i in range(length))
 
 # API Endpoints
+@app.get("/api/adhesions")
+def list_adhesions():
+    conn = get_db_connection()
+    adhesions = conn.execute("SELECT * FROM adhesions").fetchall()
+    conn.close()
+    return [dict(row) for row in adhesions]
+
 @app.post("/api/adhesions", response_model=Adhesion)
 def create_adhesion(adhesion: AdhesionCreate):
     code = generate_random_code()
@@ -102,8 +109,10 @@ def read_adhesion(code: str):
     if adhesion_row is None:
         raise HTTPException(status_code=404, detail="Adhesion not found")
     
-    activites = json.loads(adhesion_row['activites']) if adhesion_row['activites'] else None
-    return Adhesion(**dict(adhesion_row), activites=activites)
+    adhesion_data = dict(adhesion_row)
+    raw_activites = adhesion_data.pop('activites', None)
+    parsed_activites = json.loads(raw_activites) if raw_activites else []
+    return Adhesion(**adhesion_data, activites=parsed_activites)
 
 
 @app.put("/api/adhesions/{code}", response_model=Adhesion)
