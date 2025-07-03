@@ -37,8 +37,8 @@ const submitForm = async () => {
       router.push('/'); // Redirige vers la page d'accueil après la mise à jour
     } else {
       response = await axios.post('http://localhost:8000/api/adhesions', store.formData);
-      store.lastGeneratedCode = response.data.code; // Stocke le code
       store.resetForm(); // Réinitialise le formulaire mais garde le code
+      store.lastGeneratedCode = response.data.code; // Stocke le code
       router.push('/confirmation'); // Redirige vers la page de confirmation
     }
   } catch (error) {
