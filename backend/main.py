@@ -42,7 +42,10 @@ def create_tables():
             nom TEXT,
             prenom TEXT,
             date_naissance TEXT,
-            adresse_postale TEXT,
+            numero_rue TEXT,
+            nom_rue TEXT,
+            code_postal TEXT,
+            ville TEXT,
             status TEXT DEFAULT 'pending'
         )
     ''')
@@ -89,7 +92,10 @@ class AdhesionBase(BaseModel):
     nom: Optional[str] = None
     prenom: Optional[str] = None
     date_naissance: Optional[str] = None
-    adresse_postale: Optional[str] = None
+    numero_rue: Optional[str] = None
+    nom_rue: Optional[str] = None
+    code_postal: Optional[str] = None
+    ville: Optional[str] = None
     activites: Optional[List[str]] = []
 
 class AdhesionCreate(AdhesionBase):
@@ -144,6 +150,10 @@ def list_adhesions():
         ).fetchall()
         adhesion_data['activites'] = [r['name'] for r in activities_rows]
         adhesion_data['status'] = row['status'] # Add status
+        adhesion_data['numero_rue'] = row['numero_rue']
+        adhesion_data['nom_rue'] = row['nom_rue']
+        adhesion_data['code_postal'] = row['code_postal']
+        adhesion_data['ville'] = row['ville']
         result.append(adhesion_data)
     conn.close()
     return result
@@ -155,8 +165,8 @@ def create_adhesion(adhesion: AdhesionCreate):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO adhesions (code, email, nom, prenom, date_naissance, adresse_postale) VALUES (?, ?, ?, ?, ?, ?)",
-            (code, adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.adresse_postale)
+            "INSERT INTO adhesions (code, email, nom, prenom, date_naissance, numero_rue, nom_rue, code_postal, ville) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (code, adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville)
         )
         new_id = cursor.lastrowid
 

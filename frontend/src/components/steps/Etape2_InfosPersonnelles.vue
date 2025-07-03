@@ -15,8 +15,20 @@
         <input type="date" id="date_naissance" v-model="formData.date_naissance" required>
       </div>
       <div>
-        <label for="adresse_postale">Adresse Postale:</label>
-        <textarea id="adresse_postale" v-model="formData.adresse_postale" required></textarea>
+        <label for="numero_rue">Numéro de la rue:</label>
+        <input type="text" id="numero_rue" v-model="formData.numero_rue" required>
+      </div>
+      <div>
+        <label for="nom_rue">Nom de la rue:</label>
+        <input type="text" id="nom_rue" v-model="formData.nom_rue" required>
+      </div>
+      <div>
+        <label for="code_postal">Code Postal:</label>
+        <input type="text" id="code_postal" v-model="formData.code_postal" required>
+      </div>
+      <div>
+        <label for="ville">Ville:</label>
+        <input type="text" id="ville" v-model="formData.ville" required>
       </div>
       <button @click="prevStep">Précédent</button>
       <button type="submit">Suivant</button>
