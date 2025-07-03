@@ -10,6 +10,7 @@ export const useFormStore = defineStore('form', {
       date_naissance: '',
       adresse_postale: '',
       activites: [] as string[],
+      code: null as string | null,
     },
   }),
   actions: {
@@ -32,6 +33,7 @@ export const useFormStore = defineStore('form', {
         date_naissance: '',
         adresse_postale: '',
         activites: [],
+        code: null,
       };
     },
   },

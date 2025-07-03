@@ -1,3 +1,4 @@
+<template>
 <div id="app">
     <nav>
       <RouterLink to="/">Nouveau Formulaire</RouterLink> |
@@ -5,6 +6,7 @@
     </nav>
     <router-view />
   </div>
+</template>
 
 <script setup lang="ts">
 import { computed } from 'vue';

@@ -27,8 +27,14 @@ const prevStep = () => {
 
 const submitForm = async () => {
   try {
-    const response = await axios.post('http://localhost:8000/api/adhesions', formData);
-    alert(`Formulaire validé ! Votre code d\'accès est : ${response.data.code}`);
+    let response;
+    if (store.formData.code) {
+      response = await axios.put(`http://localhost:8000/api/adhesions/${store.formData.code}`, store.formData);
+      alert(`Formulaire mis à jour !`);
+    } else {
+      response = await axios.post('http://localhost:8000/api/adhesions', store.formData);
+      alert(`Formulaire validé ! Votre code d\'accès est : ${response.data.code}`);
+    }
     store.resetForm();
   } catch (error) {
     console.error(error);

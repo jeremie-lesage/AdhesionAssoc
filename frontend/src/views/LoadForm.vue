@@ -25,6 +25,7 @@ const loadForm = async () => {
   try {
     const response = await axios.get(`http://localhost:8000/api/adhesions/${code.value}`);
     store.formData = response.data;
+    store.formData.code = response.data.code; // Stocker le code
     router.push('/');
   } catch (error) {
     console.error(error);
