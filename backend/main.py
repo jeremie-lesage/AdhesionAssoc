@@ -31,6 +31,7 @@ def get_db_connection():
     return conn
 
 def create_tables():
+    print("Creating/updating database tables...") # Debug print
     conn = get_db_connection()
     conn.execute("PRAGMA foreign_keys = ON;") # Enable foreign key support
     conn.execute('''
@@ -48,7 +49,13 @@ def create_tables():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS activities (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
+            name TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '',
+            location TEXT DEFAULT '',
+            resident_price REAL DEFAULT 0.0,
+            external_price REAL DEFAULT 0.0,
+            is_child_activity BOOLEAN DEFAULT FALSE,
+            is_adult_activity BOOLEAN DEFAULT FALSE
         )
     ''')
     conn.execute('''
@@ -62,9 +69,14 @@ def create_tables():
     ''')
     
     # Insert default activities if not present
-    default_activities = ['danse', 'gym', 'pilate']
-    for activity_name in default_activities:
-        conn.execute('INSERT OR IGNORE INTO activities (name) VALUES (?)', (activity_name,))
+    default_activities = [
+        ('danse', 'Cours de danse pour tous les âges', 'Salle Polyvalente', 100.0, 120.0, True, True),
+        ('gym', 'Séances de gymnastique douce', 'Gymnase', 80.0, 100.0, False, True),
+        ('pilate', 'Cours de Pilate pour renforcer le corps', 'Salle de Fitness', 90.0, 110.0, False, True)
+    ]
+    for name, description, location, resident_price, external_price, is_child, is_adult in default_activities:
+        conn.execute('INSERT OR IGNORE INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+                       (name, description, location, resident_price, external_price, is_child, is_adult))
 
     conn.commit()
     conn.close()
@@ -93,12 +105,21 @@ class Adhesion(AdhesionBase):
 
 class ActivityBase(BaseModel):
     name: str
+    description: Optional[str] = None
+    location: Optional[str] = None
+    resident_price: Optional[float] = None
+    external_price: Optional[float] = None
+    is_child_activity: Optional[bool] = False
+    is_adult_activity: Optional[bool] = False
 
 class ActivityCreate(ActivityBase):
     pass
 
 class Activity(ActivityBase):
     id: int
+
+    class Config:
+        from_attributes = True
 
     class Config:
         from_attributes = True
@@ -199,71 +220,42 @@ def validate_adhesion(code: str):
     adhesion_data['activites'] = [row['name'] for row in activities_rows]
     conn.close()
     return Adhesion(**adhesion_data)
-
-@app.put("/api/adhesions/{code}", response_model=Adhesion)
-def update_adhesion(code: str, adhesion: AdhesionCreate):
+@app.put("/api/activities/{activity_id}", response_model=Activity)
+def update_activity(activity_id: int, activity: ActivityCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    # Check if adhesion is already validated
-    current_status_row = conn.execute("SELECT status FROM adhesions WHERE code = ?", (code,)).fetchone()
-    if current_status_row and current_status_row['status'] == 'validated':
-        conn.close()
-        raise HTTPException(status_code=403, detail="Cannot update a validated adhesion")
-    
-    # Update adhesion details
     cursor.execute(
-        "UPDATE adhesions SET email = ?, nom = ?, prenom = ?, date_naissance = ?, adresse_postale = ? WHERE code = ?",
-        (adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.adresse_postale, code)
+        "UPDATE activities SET name = ?, description = ?, location = ?, resident_price = ?, external_price = ?, is_child_activity = ?, is_adult_activity = ? WHERE id = ?",
+        (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity, activity_id)
     )
+    conn.commit()
     if cursor.rowcount == 0:
         conn.close()
-        raise HTTPException(status_code=404, detail="Adhesion not found")
-
-    updated_adhesion_row = conn.execute("SELECT id FROM adhesions WHERE code = ?", (code,)).fetchone()
-    adhesion_id = updated_adhesion_row['id']
-
-    # Clear existing activities for this adhesion
-    conn.execute("DELETE FROM adhesion_activities WHERE adhesion_id = ?", (adhesion_id,))
-
-    # Insert new activities
-    if adhesion.activites:
-        for activity_name in adhesion.activites:
-            activity_id_row = conn.execute("SELECT id FROM activities WHERE name = ?", (activity_name,)).fetchone()
-            if activity_id_row:
-                activity_id = activity_id_row['id']
-                conn.execute(
-                    "INSERT INTO adhesion_activities (adhesion_id, activity_id) VALUES (?, ?)",
-                    (adhesion_id, activity_id)
-                )
-    conn.commit()
-
-    # Fetch the updated adhesion with its activities
-    updated_adhesion = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
-    activities_rows = conn.execute(
-        "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
-        (adhesion_id,)
-    ).fetchall()
-    conn.close()
+        raise HTTPException(status_code=404, detail="Activity not found")
     
-    updated_adhesion_data = dict(updated_adhesion)
-    updated_adhesion_data['activites'] = [row['name'] for row in activities_rows]
-
-    return Adhesion(**updated_adhesion_data)
+    updated_activity = conn.execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
+    conn.close()
+    return Activity(**dict(updated_activity))
 
 @app.get("/api/activities", response_model=List[Activity])
 def list_activities():
     conn = get_db_connection()
     activities = conn.execute("SELECT * FROM activities").fetchall()
     conn.close()
-    return [Activity(**dict(row)) for row in activities]
+    result = []
+    for row in activities:
+        activity_data = dict(row)
+        print(f"Raw activity data from DB: {activity_data}") # Debug print
+        result.append(Activity(**activity_data))
+    return result
 
 @app.post("/api/activities", response_model=Activity, status_code=201)
 def create_activity(activity: ActivityCreate):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO activities (name) VALUES (?) RETURNING id", (activity.name,))
+        cursor.execute("INSERT INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                       (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity))
         new_id = cursor.fetchone()[0]
         conn.commit()
     except sqlite3.IntegrityError:
@@ -271,7 +263,7 @@ def create_activity(activity: ActivityCreate):
         raise HTTPException(status_code=400, detail="Activity with this name already exists")
     finally:
         conn.close()
-    return Activity(id=new_id, name=activity.name)
+    return Activity(id=new_id, **activity.dict())
 
 @app.delete("/api/activities/{activity_id}", status_code=204)
 def delete_activity(activity_id: int):
@@ -283,3 +275,5 @@ def delete_activity(activity_id: int):
         conn.close()
         raise HTTPException(status_code=404, detail="Activity not found")
     conn.close()
+    return
+

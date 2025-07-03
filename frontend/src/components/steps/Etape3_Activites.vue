@@ -7,7 +7,12 @@
       <div v-for="activity in availableActivities" :key="activity.id">
         <label>
           <input type="checkbox" :value="activity.name" v-model="formData.activites">
-          {{ activity.name }}
+          {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
+          <span v-if="activity.resident_price"> (Résident: {{ activity.resident_price }}€)</span>
+          <span v-if="activity.external_price"> (Extérieur: {{ activity.external_price }}€)</span>
+          <span v-if="activity.location"> (Lieu: {{ activity.location }})</span>
+          <span v-if="activity.is_child_activity"> (Enfant)</span>
+          <span v-if="activity.is_adult_activity"> (Adulte)</span>
         </label>
       </div>
       <button @click="prevStep">Précédent</button>
