@@ -230,6 +230,65 @@ def validate_adhesion(code: str):
     adhesion_data['activites'] = [row['name'] for row in activities_rows]
     conn.close()
     return Adhesion(**adhesion_data)
+
+@app.put("/api/adhesions/{code}", response_model=Adhesion)
+def update_adhesion(code: str, adhesion: AdhesionCreate):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if adhesion exists and get its ID
+    existing_adhesion = conn.execute("SELECT id, status FROM adhesions WHERE code = ?", (code,)).fetchone()
+    if existing_adhesion is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Adhesion not found")
+    
+    adhesion_id = existing_adhesion['id']
+    current_status = existing_adhesion['status']
+
+    # Prevent updating validated adhesions
+    if current_status == 'validated':
+        conn.close()
+        raise HTTPException(status_code=403, detail="Cannot update a validated adhesion")
+
+    try:
+        # Update adhesion details
+        cursor.execute(
+            "UPDATE adhesions SET email = ?, nom = ?, prenom = ?, date_naissance = ?, numero_rue = ?, nom_rue = ?, code_postal = ?, ville = ? WHERE code = ?",
+            (adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville, code)
+        )
+
+        # Clear existing activities for this adhesion
+        conn.execute("DELETE FROM adhesion_activities WHERE adhesion_id = ?", (adhesion_id,))
+
+        # Insert new activities
+        if adhesion.activites:
+            for activity_name in adhesion.activites:
+                activity_id_row = conn.execute("SELECT id FROM activities WHERE name = ?", (activity_name,)).fetchone()
+                if activity_id_row:
+                    activity_id = activity_id_row['id']
+                    conn.execute(
+                        "INSERT INTO adhesion_activities (adhesion_id, activity_id) VALUES (?, ?)",
+                        (adhesion_id, activity_id)
+                    )
+        conn.commit()
+
+        # Fetch the updated adhesion with its activities
+        updated_adhesion = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
+        activities_rows = conn.execute(
+            "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
+            (adhesion_id,)
+        ).fetchall()
+        
+        updated_adhesion_data = dict(updated_adhesion)
+        updated_adhesion_data['activites'] = [row['name'] for row in activities_rows]
+
+        return Adhesion(**updated_adhesion_data)
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        conn.close()
+
 @app.put("/api/activities/{activity_id}", response_model=Activity)
 def update_activity(activity_id: int, activity: ActivityCreate):
     conn = get_db_connection()
