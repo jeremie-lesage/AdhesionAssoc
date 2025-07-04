@@ -15,6 +15,7 @@
           <th>Tarif Extérieur</th>
           <th>Enfant</th>
           <th>Adulte</th>
+          <th>Inscrits / Places</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -27,6 +28,10 @@
           <td>{{ activity.external_price }}</td>
           <td>{{ activity.is_child_activity ? 'Oui' : 'Non' }}</td>
           <td>{{ activity.is_adult_activity ? 'Oui' : 'Non' }}</td>
+          <td>
+            <span v-if="activity.max_participants > 0">{{ activity.current_participants }} / {{ activity.max_participants }}</span>
+            <span v-else>Illimité</span>
+          </td>
           <td>
             <button @click="startEdit(activity)">Modifier</button>
             <button @click="deleteActivity(activity.id)" class="delete-button">Supprimer</button>
@@ -60,6 +65,10 @@
         <label for="external_price">Tarif Extérieur:</label>
         <input type="number" id="external_price" v-model="editingActivity.external_price" placeholder="Tarif Extérieur" step="0.01">
       </div>
+      <div class="form-group">
+        <label for="max_participants">Nombre de places disponibles:</label>
+        <input type="number" id="max_participants" v-model="editingActivity.max_participants" placeholder="Nombre de places" min="0">
+      </div>
       <div class="form-group checkbox-group">
         <label>
           <input type="checkbox" v-model="editingActivity.is_child_activity"> Activité Enfant
@@ -91,6 +100,7 @@ const editingActivity = ref({
   external_price: null,
   is_child_activity: false,
   is_adult_activity: false,
+  max_participants: 0,
 });
 const isEditing = ref(false);
 const loading = ref(true);
@@ -148,6 +158,7 @@ const resetForm = () => {
     external_price: null,
     is_child_activity: false,
     is_adult_activity: false,
+    max_participants: 0,
   };
   isEditing.value = false;
 };

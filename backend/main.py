@@ -59,7 +59,8 @@ def create_tables():
             resident_price REAL DEFAULT 0.0,
             external_price REAL DEFAULT 0.0,
             is_child_activity BOOLEAN DEFAULT FALSE,
-            is_adult_activity BOOLEAN DEFAULT FALSE
+            is_adult_activity BOOLEAN DEFAULT FALSE,
+            max_participants INTEGER DEFAULT 0
         )
     ''')
     conn.execute('''
@@ -119,12 +120,14 @@ class ActivityBase(BaseModel):
     external_price: Optional[float] = None
     is_child_activity: Optional[bool] = False
     is_adult_activity: Optional[bool] = False
+    max_participants: Optional[int] = 0
 
 class ActivityCreate(ActivityBase):
     pass
 
 class Activity(ActivityBase):
     id: int
+    current_participants: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -176,9 +179,19 @@ def create_adhesion(adhesion: AdhesionCreate):
         # Insert activities
         if adhesion.activites:
             for activity_name in adhesion.activites:
-                activity_id_row = conn.execute("SELECT id FROM activities WHERE name = ?", (activity_name,)).fetchone()
+                activity_id_row = conn.execute("SELECT id, max_participants FROM activities WHERE name = ?", (activity_name,)).fetchone()
                 if activity_id_row:
                     activity_id = activity_id_row['id']
+                    max_participants = activity_id_row['max_participants']
+
+                    # Check current number of participants for this activity
+                    current_participants_row = conn.execute("SELECT COUNT(*) FROM adhesion_activities WHERE activity_id = ?", (activity_id,)).fetchone()
+                    current_participants = current_participants_row[0]
+
+                    if max_participants > 0 and current_participants >= max_participants:
+                        conn.close()
+                        raise HTTPException(status_code=400, detail=f"Activity '{activity_name}' has reached its maximum number of participants.")
+
                     conn.execute(
                         "INSERT INTO adhesion_activities (adhesion_id, activity_id) VALUES (?, ?)",
                         (new_id, activity_id)
@@ -324,8 +337,8 @@ def update_activity(activity_id: int, activity: ActivityCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE activities SET name = ?, description = ?, location = ?, resident_price = ?, external_price = ?, is_child_activity = ?, is_adult_activity = ? WHERE id = ?",
-        (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity, activity_id)
+        "UPDATE activities SET name = ?, description = ?, location = ?, resident_price = ?, external_price = ?, is_child_activity = ?, is_adult_activity = ?, max_participants = ? WHERE id = ?",
+        (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity, activity.max_participants, activity_id)
     )
     conn.commit()
     if cursor.rowcount == 0:
@@ -340,12 +353,14 @@ def update_activity(activity_id: int, activity: ActivityCreate):
 def list_activities():
     conn = get_db_connection()
     activities = conn.execute("SELECT * FROM activities").fetchall()
-    conn.close()
     result = []
     for row in activities:
         activity_data = dict(row)
-        print(f"Raw activity data from DB: {activity_data}") # Debug print
+        # Get current participants for this activity
+        participants_row = conn.execute("SELECT COUNT(*) FROM adhesion_activities WHERE activity_id = ?", (activity_data['id'],)).fetchone()
+        activity_data['current_participants'] = participants_row[0]
         result.append(Activity(**activity_data))
+    conn.close()
     return result
 
 @app.post("/api/activities", response_model=Activity, status_code=201)
@@ -353,8 +368,8 @@ def create_activity(activity: ActivityCreate):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
-                       (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity))
+        cursor.execute("INSERT INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                       (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price, activity.is_child_activity, activity.is_adult_activity, activity.max_participants))
         new_id = cursor.fetchone()[0]
         conn.commit()
     except sqlite3.IntegrityError:

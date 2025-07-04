@@ -35,11 +35,13 @@
 
       <h3>Liste des activités proposées</h3>
       <div v-for="activity in filteredActivities" :key="activity.id">
-        <label>
-          <input type="checkbox" :value="activity.name" v-model="formData.activites">
+        <label :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
+          <input type="checkbox" :value="activity.name" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
           <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
           <span v-if="activity.location"> (Lieu: {{ activity.location }})</span>
+          <span v-if="activity.max_participants > 0"> (Places restantes: {{ activity.max_participants - activity.current_participants }})</span>
+          <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants" style="color: red;"> (Complet)</span>
         </label>
       </div>
       <button @click="prevStep">Précédent</button>
@@ -72,6 +74,23 @@ const adherentAge = computed(() => {
   return age;
 });
 
+const adhesionCost = computed(() => {
+  if (adherentAge.value === null) return 0;
+
+  if (adherentAge.value >= 16) {
+    return 12; // Adult
+  } else {
+    // For children, the actual cost will be set by the radio buttons
+    return formData.adhesion_amount || 0; 
+  }
+});
+
+// Set initial adhesion amount for children if not already set
+watch(adherentAge, (newAge) => {
+  if (newAge !== null && newAge < 16 && formData.adhesion_amount === null) {
+    formData.adhesion_amount = 8; // Default to 8€ for first child
+  }
+}, { immediate: true });
 
 const filteredActivities = computed(() => {
   if (adherentAge.value === null) return [];
@@ -118,3 +137,14 @@ const getPrice = (activity) => {
   }
 };
 </script>
+
+<style scoped>
+.disabled-activity {
+  color: #999;
+  cursor: not-allowed;
+}
+
+.disabled-activity input[type="checkbox"] {
+  cursor: not-allowed;
+}
+</style>

@@ -168,7 +168,7 @@ const exportToCsv = () => {
 
 const generateReceiptPdf = async (adhesion) => {
   const receiptContent = `
-    <div style="width: 190mm; padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
+    <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
       <!-- Header -->
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
         <tr>
