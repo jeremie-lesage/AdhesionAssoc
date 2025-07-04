@@ -4,7 +4,7 @@
     <form @submit.prevent="nextStep">
       <div>
         <label for="email">Adresse Email:</label>
-        <input type="email" id="email" v-model="formData.email" required>
+        <input type="email" id="email" v-model="formData.email" required autocomplete="email">
       </div>
       <button type="submit">Suivant</button>
     </form>

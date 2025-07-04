@@ -4,31 +4,31 @@
     <form @submit.prevent="nextStep">
       <div>
         <label for="nom">Nom:</label>
-        <input type="text" id="nom" v-model="formData.nom" required>
+        <input type="text" id="nom" v-model="formData.nom" required autocomplete="family-name">
       </div>
       <div>
         <label for="prenom">Prénom:</label>
-        <input type="text" id="prenom" v-model="formData.prenom" required>
+        <input type="text" id="prenom" v-model="formData.prenom" required autocomplete="given-name">
       </div>
       <div>
         <label for="date_naissance">Date de Naissance:</label>
-        <input type="date" id="date_naissance" v-model="formData.date_naissance" required>
+        <input type="date" id="date_naissance" v-model="formData.date_naissance" required autocomplete="bday">
       </div>
       <div>
         <label for="numero_rue">Numéro de la rue:</label>
-        <input type="text" id="numero_rue" v-model="formData.numero_rue" required>
+        <input type="text" id="numero_rue" v-model="formData.numero_rue">
       </div>
       <div>
         <label for="nom_rue">Nom de la rue:</label>
-        <input type="text" id="nom_rue" v-model="formData.nom_rue" required>
+        <input type="text" id="nom_rue" v-model="formData.nom_rue" required autocomplete="address-line1">
       </div>
       <div>
         <label for="code_postal">Code Postal:</label>
-        <input type="text" id="code_postal" v-model="formData.code_postal" required>
+        <input type="text" id="code_postal" v-model="formData.code_postal" required autocomplete="postal-code">
       </div>
       <div>
         <label for="ville">Ville:</label>
-        <input type="text" id="ville" v-model="formData.ville" required>
+        <input type="text" id="ville" v-model="formData.ville" required autocomplete="address-level2">
       </div>
       <button @click="prevStep">Précédent</button>
       <button type="submit">Suivant</button>
