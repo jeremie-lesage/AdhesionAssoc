@@ -3,13 +3,9 @@
     <h2>Étape 4: Résumé</h2>
     <div>
       <p><strong>Email:</strong> {{ formData.email }}</p>
-      <p><strong>Nom:</strong> {{ formData.nom }}</p>
-      <p><strong>Prénom:</strong> {{ formData.prenom }}</p>
-      <p><strong>Date de Naissance:</strong> {{ formData.date_naissance }}</p>
-      <p><strong>Numéro de la rue:</strong> {{ formData.numero_rue }}</p>
-      <p><strong>Nom de la rue:</strong> {{ formData.nom_rue }}</p>
-      <p><strong>Code Postal:</strong> {{ formData.code_postal }}</p>
-      <p><strong>Ville:</strong> {{ formData.ville }}</p>
+      <p><strong>Adhérant:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
+      <p><strong>Date de Naissance:</strong> {{ formattedDateNaissance }}</p>
+      <p><strong>Adresse:</strong> {{ formData.numero_rue }}, {{ formData.nom_rue }} - {{ formData.code_postal }} {{ formData.ville }}</p>
       <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
       <p><strong>Activités sélectionnées:</strong></p>
       <ul>
@@ -56,6 +52,12 @@ const getPrice = (activity) => {
     return activity.external_price;
   }
 };
+
+const formattedDateNaissance = computed(() => {
+  if (!formData.date_naissance) return '';
+  const date = new Date(formData.date_naissance);
+  return date.toLocaleDateString('fr-FR');
+});
 
 const totalCost = computed(() => {
   const activitiesTotal = selectedActivitiesDetails.value.reduce((sum, activity) => {
