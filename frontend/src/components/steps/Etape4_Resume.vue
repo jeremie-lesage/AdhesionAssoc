@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useFormStore } from '@/stores/form';
-import axios from 'axios';
+import api from '@/api';
 import { useRouter } from 'vue-router';
 
 const store = useFormStore();
@@ -34,7 +34,7 @@ const allActivities = ref([]);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/activities');
+    const response = await api.get('/api/activities');
     allActivities.value = response.data;
   } catch (error) {
     console.error("Erreur lors du chargement des activités:", error);
@@ -78,12 +78,12 @@ const submitForm = async () => {
   try {
     let response;
     if (store.formData.code) {
-      response = await axios.put(`http://localhost:8000/api/adhesions/${store.formData.code}`, store.formData);
+      response = await api.put(`/api/adhesions/${store.formData.code}`, store.formData);
       alert(`Formulaire mis à jour !`);
       store.resetForm();
       router.push('/'); // Redirige vers la page d'accueil après la mise à jour
     } else {
-      response = await axios.post('http://localhost:8000/api/adhesions', store.formData);
+      response = await api.post('/api/adhesions', store.formData);
       store.resetForm(); // Réinitialise le formulaire mais garde le code
       store.lastGeneratedCode = response.data.code; // Stocke le code
       router.push('/confirmation'); // Redirige vers la page de confirmation

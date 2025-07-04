@@ -23,7 +23,7 @@ const code = ref('');
 
 const loadForm = async () => {
   try {
-    const response = await axios.get(`http://localhost:8000/api/adhesions/${code.value}`);
+    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions/${code.value}`);
     if (response.data.status === 'validated') {
       alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
       return;

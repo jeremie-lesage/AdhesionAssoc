@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useFormStore } from '@/stores/form';
-import axios from 'axios';
+import api from '@/api';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -104,7 +104,7 @@ const filteredActivities = computed(() => {
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/activities');
+    const response = await api.get('/api/activities');
     allActivities.value = response.data;
   } catch (err) {
     activitiesError.value = err.message;

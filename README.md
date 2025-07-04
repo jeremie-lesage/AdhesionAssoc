@@ -65,8 +65,10 @@ Pour compiler le projet, générer une image Docker et lancer le conteneur, suiv
 
 2.  **Lancer le conteneur Docker :**
     ```bash
-    docker run -p 8000:8000 foyer-rural-app
+    docker run -p 8000:8000 -e BACKEND_URL=http://your-backend-fqdn:8000 foyer-rural-app
     ```
+    Remplacez `http://your-backend-fqdn:8000` par l'adresse réelle de votre backend. Si vous ne spécifiez pas `BACKEND_URL`, la valeur par défaut `http://localhost:8000` sera utilisée.
+
     Cette commande lance un conteneur à partir de l'image `foyer-rural-app` et mappe le port 8000 du conteneur au port 8000 de votre machine hôte.
 
     L'application sera accessible via votre navigateur à l'adresse `http://localhost:8000`.

@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/api';
 
 const activities = ref([]);
 const editingActivity = ref({
@@ -110,7 +110,7 @@ const fetchActivities = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get('http://localhost:8000/api/activities');
+    const response = await api.get('/api/activities');
     activities.value = response.data;
   } catch (err) {
     error.value = err.message;
@@ -121,7 +121,7 @@ const fetchActivities = async () => {
 
 const addActivity = async () => {
   try {
-    await axios.post('http://localhost:8000/api/activities', editingActivity.value);
+    await api.post('/api/activities', editingActivity.value);
     resetForm();
     fetchActivities();
   } catch (err) {
@@ -136,7 +136,7 @@ const startEdit = (activity) => {
 
 const updateActivity = async () => {
   try {
-    await axios.put(`http://localhost:8000/api/activities/${editingActivity.value.id}`, editingActivity.value);
+    await api.put(`/api/activities/${editingActivity.value.id}`, editingActivity.value);
     resetForm();
     fetchActivities();
   } catch (err) {
@@ -166,7 +166,7 @@ const resetForm = () => {
 const deleteActivity = async (id: number) => {
   if (!confirm('Êtes-vous sûr de vouloir supprimer cette activité ?')) return;
   try {
-    await axios.delete(`http://localhost:8000/api/activities/${id}`);
+    await api.delete(`/api/activities/${id}`);
     fetchActivities(); // Recharger la liste
   } catch (err) {
     alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);

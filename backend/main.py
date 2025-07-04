@@ -1,12 +1,15 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 import sqlite3
 import random
 import string
 import json
+import os
 
 app = FastAPI()
 
@@ -22,6 +25,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for the frontend
+app.mount("/", StaticFiles(directory="./frontend/dist", html=True), name="static")
+
+@app.get("/")
+async def serve_frontend(request: Request):
+    with open(os.path.join("./frontend/dist", "index.html"), "r") as f:
+        html_content = f.read()
+    
+    backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
+    html_content = html_content.replace("<!-- BACKEND_URL_PLACEHOLDER -->", f"<script>window.BACKEND_URL = '{backend_url}';</script>")
+    
+    return HTMLResponse(content=html_content, status_code=200)
 
 
 # Database setup

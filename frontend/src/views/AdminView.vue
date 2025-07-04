@@ -49,9 +49,16 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useRouter, RouterLink } from 'vue-router';
 import { useFormStore } from '@/stores/form';
+import api from '@/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
+
+declare global {
+  interface Window {
+    BACKEND_URL: string;
+  }
+}
 
 const adhesions = ref([]);
 const loading = ref(true);
@@ -64,7 +71,7 @@ const fetchAdhesions = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get('http://localhost:8000/api/adhesions');
+    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions`);
     adhesions.value = response.data;
   } catch (err) {
     error.value = err.message;
@@ -75,7 +82,7 @@ const fetchAdhesions = async () => {
 
 const fetchAllActivities = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/activities');
+    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/activities`);
     allActivities.value = response.data;
   } catch (err) {
     console.error("Erreur lors du chargement des activités:", err);
@@ -110,7 +117,7 @@ onMounted(() => {
 
 const editAdhesion = async (code: string) => {
   try {
-    const response = await axios.get(`http://localhost:8000/api/adhesions/${code}`);
+    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions/${code}`);
     formStore.formData = response.data;
     formStore.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
     router.push('/adhesion'); // Redirige vers la page du formulaire
@@ -122,7 +129,7 @@ const editAdhesion = async (code: string) => {
 const validateAdhesion = async (code: string) => {
   if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ?')) return;
   try {
-    await axios.put(`http://localhost:8000/api/adhesions/${code}/validate`);
+    await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions/${code}/validate`);
     alert('Adhésion validée avec succès !');
     fetchAdhesions(); // Recharger la liste
   } catch (err) {

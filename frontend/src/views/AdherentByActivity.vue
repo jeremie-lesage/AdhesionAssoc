@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '@/api';
 import { RouterLink } from 'vue-router';
 
 const activities = ref([]);
@@ -62,7 +62,7 @@ const selectedActivityName = computed(() => {
 
 const fetchActivities = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/activities');
+    const response = await api.get('/api/activities');
     activities.value = response.data;
   } catch (err: any) {
     error.value = err.message;
@@ -77,7 +77,7 @@ const fetchAdherentsForActivity = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`http://localhost:8000/api/activities/${selectedActivityId.value}/adherents`);
+    const response = await api.get(`/api/activities/${selectedActivityId.value}/adherents`);
     adherents.value = response.data;
   } catch (err: any) {
     error.value = err.message;
