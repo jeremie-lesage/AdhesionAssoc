@@ -40,7 +40,8 @@ def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(secur
 
 # CORS Middleware
 origins = [
-    "http://localhost:8000",
+    "http://localhost:5173", # Frontend development server
+    os.environ.get("BACKEND_URL", "http://localhost:8000"),
 ]
 
 app.add_middleware(
@@ -65,7 +66,8 @@ async def admin_login(admin_user: AdminLogin):
 
 # Database setup
 def get_db_connection():
-    conn = sqlite3.connect('foyer_rural.db')
+    DB_NAME = os.environ.get("DATABASE_NAME", "foyer_rural.db")
+    conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 

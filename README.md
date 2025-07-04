@@ -65,15 +65,16 @@ Pour compiler le projet, générer une image Docker et lancer le conteneur, suiv
 
 2.  **Lancer le conteneur Docker :**
     ```bash
-    docker run -p 8000:8000 -e BACKEND_URL=http://your-backend-fqdn:8000 foyer-rural-app
+    docker run -p 8000:8000 -e BACKEND_URL=http://your-backend-fqdn:8000 -e DATABASE_NAME=my_custom_db.db foyer-rural-app
     ```
     Remplacez `http://your-backend-fqdn:8000` par l'adresse réelle de votre backend. Si vous ne spécifiez pas `BACKEND_URL`, la valeur par défaut `http://localhost:8000` sera utilisée.
+    Vous pouvez également spécifier le nom du fichier de la base de données SQLite via la variable d'environnement `DATABASE_NAME`. Par défaut, elle est `foyer_rural.db`.
 
     Cette commande lance un conteneur à partir de l'image `foyer-rural-app` et mappe le port 8000 du conteneur au port 8000 de votre machine hôte.
 
     L'application sera accessible via votre navigateur à l'adresse `http://localhost:8000`.
 
-    *Note : Le fichier `foyer_rural.db` (base de données SQLite) sera créé à l'intérieur du conteneur. Si vous souhaitez persister les données, vous devrez utiliser un volume Docker.*
+    *Note : Le fichier de la base de données SQLite sera créé à l'intérieur du conteneur. Si vous souhaitez persister les données, vous devrez utiliser un volume Docker.*
 
 3.  **Persister les données de la base de données (avec un volume Docker) :**
     Pour éviter de perdre vos données à chaque fois que le conteneur est supprimé, vous pouvez monter un volume Docker. Cela permet de stocker le fichier `foyer_rural.db` sur votre machine hôte.

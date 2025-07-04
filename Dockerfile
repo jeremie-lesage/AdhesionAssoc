@@ -18,6 +18,7 @@ FROM python:3.12-slim-bookworm
 
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
+ENV DATABASE_NAME foyer_rural.db
 
 # Set working directory
 WORKDIR /app
