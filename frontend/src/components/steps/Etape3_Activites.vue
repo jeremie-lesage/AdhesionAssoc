@@ -11,14 +11,35 @@
     <p v-if="loadingActivities">Chargement des activités...</p>
     <p v-if="activitiesError">Erreur lors du chargement des activités: {{ activitiesError }}</p>
     <form @submit.prevent="nextStep" v-if="!loadingActivities && !activitiesError">
+      <h3>Adhésion</h3>
+      <div class="adhesion-section">
+        <label>
+          Montant de l'adhésion:
+        </label>
+        <div >
+          <template v-if="adherentAge >= 16">
+          <label >
+            <input type="radio" v-model="formData.adhesion_amount" :value="12" name="adult_adhesion_amount"> 12€
+          </label>
+          </template>
+          <template v-else>
+          <label>
+            <input type="radio" v-model="formData.adhesion_amount" :value="8" name="first_child_adhesion_amount"> 8€ (Premier enfant)
+          </label>
+          <label>
+            <input type="radio" v-model="formData.adhesion_amount" :value="6" name="child_adhesion_amount"> 6€ (Deuxième enfant et suivants)
+          </label>
+          </template>
+        </div>
+      </div>
+
+      <h3>Liste des activités proposées</h3>
       <div v-for="activity in filteredActivities" :key="activity.id">
         <label>
           <input type="checkbox" :value="activity.name" v-model="formData.activites">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
           <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
           <span v-if="activity.location"> (Lieu: {{ activity.location }})</span>
-          <span v-if="activity.is_child_activity"> (Enfant)</span>
-          <span v-if="activity.is_adult_activity"> (Adulte)</span>
         </label>
       </div>
       <button @click="prevStep">Précédent</button>
@@ -28,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useFormStore } from '@/stores/form';
 import axios from 'axios';
 
@@ -50,6 +71,7 @@ const adherentAge = computed(() => {
   }
   return age;
 });
+
 
 const filteredActivities = computed(() => {
   if (adherentAge.value === null) return [];
@@ -77,6 +99,10 @@ if (!formData.activites) {
 }
 
 const nextStep = () => {
+  if (!formData.adhesion_amount) {
+    alert("L'adhésion est obligatoire pour toute inscription.");
+    return;
+  }
   store.nextStep();
 };
 

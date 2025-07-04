@@ -46,6 +46,7 @@ def create_tables():
             nom_rue TEXT,
             code_postal TEXT,
             ville TEXT,
+            adhesion_amount REAL,
             status TEXT DEFAULT 'pending'
         )
     ''')
@@ -96,6 +97,7 @@ class AdhesionBase(BaseModel):
     nom_rue: Optional[str] = None
     code_postal: Optional[str] = None
     ville: Optional[str] = None
+    adhesion_amount: Optional[float] = None
     activites: Optional[List[str]] = []
 
 class AdhesionCreate(AdhesionBase):
@@ -154,6 +156,7 @@ def list_adhesions():
         adhesion_data['nom_rue'] = row['nom_rue']
         adhesion_data['code_postal'] = row['code_postal']
         adhesion_data['ville'] = row['ville']
+        adhesion_data['adhesion_amount'] = row['adhesion_amount']
         result.append(adhesion_data)
     conn.close()
     return result
@@ -165,8 +168,8 @@ def create_adhesion(adhesion: AdhesionCreate):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO adhesions (code, email, nom, prenom, date_naissance, numero_rue, nom_rue, code_postal, ville) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (code, adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville)
+            "INSERT INTO adhesions (code, email, nom, prenom, date_naissance, numero_rue, nom_rue, code_postal, ville, adhesion_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (code, adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville, adhesion.adhesion_amount)
         )
         new_id = cursor.lastrowid
 
@@ -253,8 +256,8 @@ def update_adhesion(code: str, adhesion: AdhesionCreate):
     try:
         # Update adhesion details
         cursor.execute(
-            "UPDATE adhesions SET email = ?, nom = ?, prenom = ?, date_naissance = ?, numero_rue = ?, nom_rue = ?, code_postal = ?, ville = ? WHERE code = ?",
-            (adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville, code)
+            "UPDATE adhesions SET email = ?, nom = ?, prenom = ?, date_naissance = ?, numero_rue = ?, nom_rue = ?, code_postal = ?, ville = ?, adhesion_amount = ? WHERE code = ?",
+            (adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue, adhesion.nom_rue, adhesion.code_postal, adhesion.ville, adhesion.adhesion_amount, code)
         )
 
         # Clear existing activities for this adhesion

@@ -10,6 +10,7 @@
       <p><strong>Nom de la rue:</strong> {{ formData.nom_rue }}</p>
       <p><strong>Code Postal:</strong> {{ formData.code_postal }}</p>
       <p><strong>Ville:</strong> {{ formData.ville }}</p>
+      <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
       <p><strong>Activités sélectionnées:</strong></p>
       <ul>
         <li v-for="activity in selectedActivitiesDetails" :key="activity.id">
@@ -57,9 +58,10 @@ const getPrice = (activity) => {
 };
 
 const totalCost = computed(() => {
-  return selectedActivitiesDetails.value.reduce((sum, activity) => {
+  const activitiesTotal = selectedActivitiesDetails.value.reduce((sum, activity) => {
     return sum + (getPrice(activity) || 0);
   }, 0);
+  return activitiesTotal + (formData.adhesion_amount || 0);
 });
 
 const prevStep = () => {

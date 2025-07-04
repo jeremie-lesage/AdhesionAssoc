@@ -12,6 +12,7 @@
           <th>Nom</th>
           <th>Prénom</th>
           <th>Adresse</th>
+          <th>Montant Adhésion</th>
           <th>Activités</th>
           <th>Statut</th>
           <th>Actions</th>
@@ -24,6 +25,7 @@
           <td>{{ adhesion.nom }}</td>
           <td>{{ adhesion.prenom }}</td>
           <td>{{ adhesion.numero_rue }}, {{ adhesion.nom_rue }} <br/> {{ adhesion.code_postal }} {{ adhesion.ville }}</td>
+          <td>{{ adhesion.adhesion_amount }}€</td>
           <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
           <td>{{ adhesion.status }}</td>
           <td>
