@@ -292,6 +292,33 @@ def update_adhesion(code: str, adhesion: AdhesionCreate):
     finally:
         conn.close()
 
+@app.get("/api/activities/{activity_id}/adherents", response_model=List[Adhesion])
+def get_adherents_by_activity(activity_id: int):
+    conn = get_db_connection()
+    # First, check if the activity exists
+    activity_row = conn.execute("SELECT id FROM activities WHERE id = ?", (activity_id,)).fetchone()
+    if activity_row is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    adhesions_rows = conn.execute(
+        "SELECT a.* FROM adhesions a JOIN adhesion_activities aa ON a.id = aa.adhesion_id WHERE aa.activity_id = ?",
+        (activity_id,)
+    ).fetchall()
+    
+    result = []
+    for row in adhesions_rows:
+        adhesion_data = dict(row)
+        # Fetch activities for each adhesion (even though we filtered by one activity, the Adhesion model expects a list)
+        activities_rows = conn.execute(
+            "SELECT act.name FROM activities act JOIN adhesion_activities ad_act ON act.id = ad_act.activity_id WHERE ad_act.adhesion_id = ?",
+            (adhesion_data['id'],)
+        ).fetchall()
+        adhesion_data['activites'] = [r['name'] for r in activities_rows]
+        result.append(adhesion_data)
+    conn.close()
+    return result
+
 @app.put("/api/activities/{activity_id}", response_model=Activity)
 def update_activity(activity_id: int, activity: ActivityCreate):
     conn = get_db_connection()

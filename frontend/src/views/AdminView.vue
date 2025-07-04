@@ -2,6 +2,8 @@
   <div>
     <h2>Administration des Adhésions</h2>
     <RouterLink to="/admin/activities" class="button">Gérer les Activités</RouterLink>
+    <RouterLink to="/admin/adherents-by-activity" class="button">Adhérents par Activité</RouterLink>
+    <button @click="exportToCsv" :disabled="!adhesions.length" class="button export-button">Exporter toutes les adhésions en CSV</button>
     <p v-if="loading">Chargement des adhésions...</p>
     <p v-if="error">Erreur lors du chargement des adhésions: {{ error }}</p>
     <table v-if="adhesions.length">
@@ -14,6 +16,7 @@
           <th>Adresse</th>
           <th>Montant Adhésion</th>
           <th>Activités</th>
+          <th>Coût Total</th>
           <th>Statut</th>
           <th>Actions</th>
         </tr>
@@ -27,6 +30,7 @@
           <td>{{ adhesion.numero_rue }}, {{ adhesion.nom_rue }} <br/> {{ adhesion.code_postal }} {{ adhesion.ville }}</td>
           <td>{{ adhesion.adhesion_amount }}€</td>
           <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
+          <td>{{ calculateTotalCost(adhesion) }}€</td>
           <td>{{ adhesion.status }}</td>
           <td>
             <button @click="editAdhesion(adhesion.code)">Corriger</button>
@@ -40,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useRouter, RouterLink } from 'vue-router';
 import { useFormStore } from '@/stores/form';
@@ -50,6 +54,7 @@ const loading = ref(true);
 const error = ref(null);
 const router = useRouter();
 const formStore = useFormStore();
+const allActivities = ref([]);
 
 const fetchAdhesions = async () => {
   loading.value = true;
@@ -64,7 +69,40 @@ const fetchAdhesions = async () => {
   }
 };
 
-onMounted(fetchAdhesions);
+const fetchAllActivities = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/activities');
+    allActivities.value = response.data;
+  } catch (err) {
+    console.error("Erreur lors du chargement des activités:", err);
+  }
+};
+
+const getPrice = (activity, city) => {
+  if (city && city.toLowerCase() === 'fauverney') {
+    return activity.resident_price;
+  } else {
+    return activity.external_price;
+  }
+};
+
+const calculateTotalCost = (adhesion) => {
+  let total = adhesion.adhesion_amount || 0;
+  if (adhesion.activites && allActivities.value.length > 0) {
+    adhesion.activites.forEach(adhesionActivityName => {
+      const activity = allActivities.value.find(act => act.name === adhesionActivityName);
+      if (activity) {
+        total += getPrice(activity, adhesion.ville) || 0;
+      }
+    });
+  }
+  return total;
+};
+
+onMounted(() => {
+  fetchAdhesions();
+  fetchAllActivities();
+});
 
 const editAdhesion = async (code: string) => {
   try {
@@ -86,6 +124,42 @@ const validateAdhesion = async (code: string) => {
   } catch (err) {
     alert(`Erreur lors de la validation de l'adhésion: ${err.response?.data?.detail || err.message}`);
   }
+};
+
+const exportToCsv = () => {
+  if (!adhesions.value.length) return;
+
+  const headers = [
+    "Code", "Email", "Nom", "Prénom", "Numéro Rue", "Nom Rue", 
+    "Code Postal", "Ville", "Montant Adhésion", "Activités", "Statut", "Coût Total"
+  ];
+  const rows = adhesions.value.map(adhesion => [
+    adhesion.code,
+    adhesion.email,
+    adhesion.nom,
+    adhesion.prenom,
+    adhesion.numero_rue,
+    adhesion.nom_rue,
+    adhesion.code_postal,
+    adhesion.ville,
+    adhesion.adhesion_amount,
+    adhesion.activites ? adhesion.activites.join(', ') : 'Aucune',
+    adhesion.status,
+    calculateTotalCost(adhesion)
+  ]);
+
+  let csvContent = headers.join(";") + "\n";
+  rows.forEach(row => {
+    csvContent += row.join(";") + "\n";
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", "toutes_adhesions.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 </script>
 
@@ -112,6 +186,40 @@ th {
 }
 
 .validate-button:hover {
+  background-color: #218838;
+}
+
+
+.button {
+  display: inline-block;
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.export-button {
+  background-color: #28a745;
+  margin-left: 0;
+}
+
+.export-button:hover {
+  background-color: #218838;
+}
+
+.export-button {
+  background-color: #28a745;
+  margin-left: 0;
+}
+
+.export-button:hover {
   background-color: #218838;
 }
 </style>

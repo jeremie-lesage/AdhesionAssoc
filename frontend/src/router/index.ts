@@ -38,6 +38,11 @@ const router = createRouter({
       path: '/confirmation',
       name: 'confirmation',
       component: ConfirmationPage
+    },
+    {
+      path: '/admin/adherents-by-activity',
+      name: 'admin-adherents-by-activity',
+      component: () => import('../views/AdherentByActivity.vue')
     }
   ]
 })
