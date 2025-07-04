@@ -51,3 +51,39 @@ Une fois les deux serveurs (backend et frontend) lancés, vous pouvez ouvrir vot
 
 - Pour remplir un nouveau formulaire, cliquez sur "Nouveau Formulaire".
 - Pour charger un formulaire existant, cliquez sur "Charger un Formulaire" et saisissez le code qui vous a été fourni lors de la première soumission.
+
+## Déploiement avec Docker
+
+Pour compiler le projet, générer une image Docker et lancer le conteneur, suivez ces étapes :
+
+1.  **Construire l'image Docker :**
+    Assurez-vous d'être à la racine du projet (là où se trouve le `Dockerfile`).
+    ```bash
+    docker build -t foyer-rural-app .
+    ```
+    Cette commande va construire l'image Docker nommée `foyer-rural-app`.
+
+2.  **Lancer le conteneur Docker :**
+    ```bash
+    docker run -p 8000:8000 foyer-rural-app
+    ```
+    Cette commande lance un conteneur à partir de l'image `foyer-rural-app` et mappe le port 8000 du conteneur au port 8000 de votre machine hôte.
+
+    L'application sera accessible via votre navigateur à l'adresse `http://localhost:8000`.
+
+    *Note : Le fichier `foyer_rural.db` (base de données SQLite) sera créé à l'intérieur du conteneur. Si vous souhaitez persister les données, vous devrez utiliser un volume Docker.*
+
+3.  **Persister les données de la base de données (avec un volume Docker) :**
+    Pour éviter de perdre vos données à chaque fois que le conteneur est supprimé, vous pouvez monter un volume Docker. Cela permet de stocker le fichier `foyer_rural.db` sur votre machine hôte.
+
+    ```bash
+    docker run -p 8000:8000 -v foyer-rural-db:/app/backend foyer-rural-app
+    ```
+    Dans cette commande :
+    - `-v foyer-rural-db:/app/backend` : Crée un volume nommé `foyer-rural-db` et le monte dans le répertoire `/app/backend` à l'intérieur du conteneur. C'est dans ce répertoire que le fichier `foyer_rural.db` est créé par l'application FastAPI.
+
+    Vous pouvez également monter un répertoire local de votre machine hôte :
+    ```bash
+    docker run -p 8000:8000 -v $(pwd)/data:/app/backend foyer-rural-app
+    ```
+    Dans cet exemple, le répertoire `data` (qui sera créé à la racine de votre projet sur votre machine hôte) sera monté dans `/app/backend` à l'intérieur du conteneur. Le fichier `foyer_rural.db` sera alors stocké dans le répertoire `data` de votre projet sur votre machine.
