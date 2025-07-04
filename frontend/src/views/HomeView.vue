@@ -14,7 +14,7 @@
 
     <h2>Actions disponibles :</h2>
     <div class="action-buttons">
-      <RouterLink to="/adhesion" class="button">Nouveau Formulaire</RouterLink>
+      <button @click="startNewForm" class="button">Nouveau Formulaire</button>
       <RouterLink to="/load" class="button">Charger un Formulaire</RouterLink>
       <RouterLink to="/admin" class="button">Administration</RouterLink>
     </div>
@@ -22,7 +22,16 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
+import { useFormStore } from '@/stores/form';
+
+const router = useRouter();
+const formStore = useFormStore();
+
+const startNewForm = () => {
+  formStore.resetForm();
+  router.push('/adhesion');
+};
 </script>
 
 <style scoped>
