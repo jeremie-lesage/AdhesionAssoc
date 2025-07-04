@@ -1,21 +1,46 @@
-
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 import sqlite3
 import random
 import string
-import json
 import os
+import secrets
+import uuid
 
 app = FastAPI()
 
+# Admin password and token (in-memory for simplicity)
+ADMIN_PASSWORD = secrets.token_urlsafe(16)
+ADMIN_TOKEN = str(uuid.uuid4())
+
+print(f"\nADMIN PASSWORD (for /api/admin/login): {ADMIN_PASSWORD}\n")
+
+# Security scheme
+security = HTTPBearer()
+
+# Pydantic model for admin login
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+# Dependency to check admin authentication
+def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials.credentials != ADMIN_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return credentials.credentials
+
 # CORS Middleware
 origins = [
-    "http://localhost:5173",
+    "http://localhost:8000",
 ]
 
 app.add_middleware(
@@ -26,18 +51,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files for the frontend
-app.mount("/", StaticFiles(directory="./frontend/dist", html=True), name="static")
-
-@app.get("/")
-async def serve_frontend(request: Request):
-    with open(os.path.join("./frontend/dist", "index.html"), "r") as f:
-        html_content = f.read()
-    
-    backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
-    html_content = html_content.replace("<!-- BACKEND_URL_PLACEHOLDER -->", f"<script>window.BACKEND_URL = '{backend_url}';</script>")
-    
-    return HTMLResponse(content=html_content, status_code=200)
+# Admin login endpoint
+@app.post("/api/admin/login")
+async def admin_login(admin_user: AdminLogin):
+    if admin_user.username == "admin" and admin_user.password == ADMIN_PASSWORD:
+        return {"access_token": ADMIN_TOKEN, "token_type": "bearer"}
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 # Database setup
@@ -157,7 +180,7 @@ def generate_random_code(length=8):
     return ''.join(random.choice(letters) for i in range(length))
 
 # API Endpoints
-@app.get("/api/adhesions")
+@app.get("/api/adhesions", dependencies=[Depends(verify_admin_token)])
 def list_adhesions():
     conn = get_db_connection()
     adhesions_rows = conn.execute("SELECT * FROM adhesions").fetchall()
@@ -242,7 +265,7 @@ def read_adhesion(code: str):
     
     return Adhesion(**adhesion_data)
 
-@app.put("/api/adhesions/{code}/validate", response_model=Adhesion)
+@app.put("/api/adhesions/{code}/validate", response_model=Adhesion, dependencies=[Depends(verify_admin_token)])
 def validate_adhesion(code: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -263,7 +286,7 @@ def validate_adhesion(code: str):
     conn.close()
     return Adhesion(**adhesion_data)
 
-@app.put("/api/adhesions/{code}", response_model=Adhesion)
+@app.put("/api/adhesions/{code}", response_model=Adhesion, dependencies=[Depends(verify_admin_token)])
 def update_adhesion(code: str, adhesion: AdhesionCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -321,7 +344,7 @@ def update_adhesion(code: str, adhesion: AdhesionCreate):
     finally:
         conn.close()
 
-@app.get("/api/activities/{activity_id}/adherents", response_model=List[Adhesion])
+@app.get("/api/activities/{activity_id}/adherents", response_model=List[Adhesion], dependencies=[Depends(verify_admin_token)])
 def get_adherents_by_activity(activity_id: int):
     conn = get_db_connection()
     # First, check if the activity exists
@@ -348,7 +371,7 @@ def get_adherents_by_activity(activity_id: int):
     conn.close()
     return result
 
-@app.put("/api/activities/{activity_id}", response_model=Activity)
+@app.put("/api/activities/{activity_id}", response_model=Activity, dependencies=[Depends(verify_admin_token)])
 def update_activity(activity_id: int, activity: ActivityCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -379,7 +402,7 @@ def list_activities():
     conn.close()
     return result
 
-@app.post("/api/activities", response_model=Activity, status_code=201)
+@app.post("/api/activities", response_model=Activity, status_code=201, dependencies=[Depends(verify_admin_token)])
 def create_activity(activity: ActivityCreate):
     conn = get_db_connection()
     try:
@@ -395,7 +418,7 @@ def create_activity(activity: ActivityCreate):
         conn.close()
     return Activity(id=new_id, **activity.dict())
 
-@app.delete("/api/activities/{activity_id}", status_code=204)
+@app.delete("/api/activities/{activity_id}", status_code=204, dependencies=[Depends(verify_admin_token)])
 def delete_activity(activity_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -407,3 +430,15 @@ def delete_activity(activity_id: int):
     conn.close()
     return
 
+# Mount static files for the frontend
+app.mount("/", StaticFiles(directory="./frontend/dist", html=True), name="static")
+
+@app.get("/")
+async def serve_frontend(request: Request):
+    with open(os.path.join("./frontend/dist", "index.html"), "r") as f:
+        html_content = f.read()
+    
+    backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
+    html_content = html_content.replace("<!-- BACKEND_URL_PLACEHOLDER -->", f"<script>window.BACKEND_URL = '{backend_url}';</script>")
+    
+    return HTMLResponse(content=html_content, status_code=200)

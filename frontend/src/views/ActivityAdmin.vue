@@ -20,7 +20,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="activity in activities" :key="activity.id">
+        <tr v-for="activity in activities" :key="activity.id!">
           <td>{{ activity.name }}</td>
           <td>{{ activity.description }}</td>
           <td>{{ activity.location }}</td>
@@ -59,15 +59,15 @@
       </div>
       <div class="form-group">
         <label for="resident_price">Tarif Résident:</label>
-        <input type="number" id="resident_price" v-model="editingActivity.resident_price" placeholder="Tarif Résident" step="0.01">
+        <input type="number" id="resident_price" v-model.number="editingActivity.resident_price" placeholder="Tarif Résident" step="0.01">
       </div>
       <div class="form-group">
         <label for="external_price">Tarif Extérieur:</label>
-        <input type="number" id="external_price" v-model="editingActivity.external_price" placeholder="Tarif Extérieur" step="0.01">
+        <input type="number" id="external_price" v-model.number="editingActivity.external_price" placeholder="Tarif Extérieur" step="0.01">
       </div>
       <div class="form-group">
         <label for="max_participants">Nombre de places disponibles:</label>
-        <input type="number" id="max_participants" v-model="editingActivity.max_participants" placeholder="Nombre de places" min="0">
+        <input type="number" id="max_participants" v-model.number="editingActivity.max_participants" placeholder="Nombre de places" min="0">
       </div>
       <div class="form-group checkbox-group">
         <label>
@@ -87,24 +87,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, type Ref } from 'vue';
 import api from '@/api';
+import {useRouter} from "vue-router";
+import type { Activity } from '@/types';
 
-const activities = ref([]);
-const editingActivity = ref({
+const activities = ref<Activity[]>([]);
+const editingActivity: Ref<Activity> = ref({
   id: null,
   name: '',
   description: '',
   location: '',
-  resident_price: null,
-  external_price: null,
+  resident_price: undefined,
+  external_price: undefined,
   is_child_activity: false,
   is_adult_activity: false,
   max_participants: 0,
+  current_participants: 0,
 });
 const isEditing = ref(false);
 const loading = ref(true);
 const error = ref(null);
+const router = useRouter();
 
 const fetchActivities = async () => {
   loading.value = true;
@@ -112,8 +116,12 @@ const fetchActivities = async () => {
   try {
     const response = await api.get('/api/activities');
     activities.value = response.data;
-  } catch (err) {
-    error.value = err.message;
+  } catch (err: any) {
+    if (err.response && err.response.status === 401) {
+      router.push({ name: 'admin-login' });
+    } else {
+      error.value = err.message;
+    }
   } finally {
     loading.value = false;
   }
@@ -124,12 +132,15 @@ const addActivity = async () => {
     await api.post('/api/activities', editingActivity.value);
     resetForm();
     fetchActivities();
-  } catch (err) {
+  } catch (err: any) {
     alert(`Erreur lors de l'ajout de l'activité: ${err.response?.data?.detail || err.message}`);
+    if (err.response && err.response.status === 401) {
+      router.push({ name: 'admin-login' });
+    }
   }
 };
 
-const startEdit = (activity) => {
+const startEdit = (activity: Activity) => {
   editingActivity.value = { ...activity };
   isEditing.value = true;
 };
@@ -139,10 +150,13 @@ const updateActivity = async () => {
     await api.put(`/api/activities/${editingActivity.value.id}`, editingActivity.value);
     resetForm();
     fetchActivities();
-  } catch (err) {
+  } catch (err: any) {
     alert(`Erreur lors de la mise à jour de l'activité: ${err.response?.data?.detail || err.message}`);
+    if (err.response && err.response.status === 401) {
+      router.push({name: 'admin-login'});
+    }
   }
-};
+}
 
 const cancelEdit = () => {
   resetForm();
@@ -154,24 +168,28 @@ const resetForm = () => {
     name: '',
     description: '',
     location: '',
-    resident_price: null,
-    external_price: null,
+    resident_price: undefined,
+    external_price: undefined,
     is_child_activity: false,
     is_adult_activity: false,
     max_participants: 0,
+    current_participants: 0,
   };
   isEditing.value = false;
 };
 
-const deleteActivity = async (id: number) => {
+const deleteActivity = async (id: number | null) => {
   if (!confirm('Êtes-vous sûr de vouloir supprimer cette activité ?')) return;
   try {
     await api.delete(`/api/activities/${id}`);
     fetchActivities(); // Recharger la liste
-  } catch (err) {
+  } catch (err: any) {
     alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);
+    if (err.response && err.response.status === 401) {
+      router.push({name: 'admin-login'});
+    }
   }
-};
+}
 
 onMounted(fetchActivities);
 </script>

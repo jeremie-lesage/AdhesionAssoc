@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2>Étape 3: Choix des Activités</h2>
-    <p v-if="adherentAge !== null">
+    <p>
       Affichage des activités pour {{ adherentAge < 16 ? 'enfants' : 'adultes' }}.
     </p>
     <p v-if="formData.ville">
@@ -34,7 +34,7 @@
       </div>
 
       <h3>Liste des activités proposées</h3>
-      <div v-for="activity in filteredActivities" :key="activity.id">
+      <div v-for="activity in filteredActivities" :key="activity.id!">
         <label :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
           <input type="checkbox" :value="activity.name" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
@@ -54,16 +54,17 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useFormStore } from '@/stores/form';
 import api from '@/api';
+import type { Activity } from '@/types';
 
 const store = useFormStore();
 const formData = store.formData;
 
-const allActivities = ref([]);
+const allActivities = ref<Activity[]>([]);
 const loadingActivities = ref(true);
-const activitiesError = ref(null);
+const activitiesError = ref<string | null>(null);
 
-const adherentAge = computed(() => {
-  if (!formData.date_naissance) return null;
+const adherentAge = computed<number>(() => {
+  if (!formData.date_naissance) return 0;
   const birthDate = new Date(formData.date_naissance);
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
@@ -92,13 +93,13 @@ watch(adherentAge, (newAge) => {
   }
 }, { immediate: true });
 
-const filteredActivities = computed(() => {
+const filteredActivities = computed<Activity[]>(() => {
   if (adherentAge.value === null) return [];
 
   if (adherentAge.value < 16) {
-    return allActivities.value.filter(activity => activity.is_child_activity);
+    return allActivities.value.filter((activity: Activity) => activity.is_child_activity);
   } else {
-    return allActivities.value.filter(activity => activity.is_adult_activity);
+    return allActivities.value.filter((activity: Activity) => activity.is_adult_activity);
   }
 });
 
@@ -106,7 +107,7 @@ onMounted(async () => {
   try {
     const response = await api.get('/api/activities');
     allActivities.value = response.data;
-  } catch (err) {
+  } catch (err: any) {
     activitiesError.value = err.message;
   } finally {
     loadingActivities.value = false;
@@ -129,7 +130,7 @@ const prevStep = () => {
   store.prevStep();
 };
 
-const getPrice = (activity) => {
+const getPrice = (activity: Activity) => {
   if (formData.ville && formData.ville.toLowerCase() === 'fauverney') {
     return activity.resident_price;
   } else {

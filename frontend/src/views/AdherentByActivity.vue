@@ -7,7 +7,7 @@
       <label for="activity-select">Sélectionner une activité:</label>
       <select id="activity-select" v-model="selectedActivityId" @change="fetchAdherentsForActivity">
         <option value="">-- Choisir une activité --</option>
-        <option v-for="activity in activities" :key="activity.id" :value="activity.id">
+        <option v-for="activity in activities" :key="activity.id!" :value="activity.id">
           {{ activity.name }}
         </option>
       </select>
@@ -31,7 +31,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="adherent in adherents" :key="adherent.id">
+          <tr v-for="adherent in adherents" :key="adherent.id!">
             <td>{{ adherent.nom }}</td>
             <td>{{ adherent.prenom }}</td>
             <td>{{ adherent.email }}</td>
@@ -47,16 +47,18 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
+import type { Activity, Adhesion } from '@/types';
 
-const activities = ref([]);
+const activities = ref<Activity[]>([]);
 const selectedActivityId = ref<number | string>('');
-const adherents = ref([]);
+const adherents = ref<Adhesion[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const router = useRouter();
 
 const selectedActivityName = computed(() => {
-  const activity = activities.value.find(act => act.id === selectedActivityId.value);
+  const activity = activities.value.find((act: Activity) => act.id === selectedActivityId.value);
   return activity ? activity.name : '';
 });
 
@@ -65,7 +67,11 @@ const fetchActivities = async () => {
     const response = await api.get('/api/activities');
     activities.value = response.data;
   } catch (err: any) {
-    error.value = err.message;
+    if (err.response && err.response.status === 401) {
+      router.push({ name: 'admin-login' });
+    } else {
+      error.value = err.message;
+    }
   }
 };
 
@@ -80,7 +86,11 @@ const fetchAdherentsForActivity = async () => {
     const response = await api.get(`/api/activities/${selectedActivityId.value}/adherents`);
     adherents.value = response.data;
   } catch (err: any) {
-    error.value = err.message;
+    if (err.response && err.response.status === 401) {
+      router.push({ name: 'admin-login' });
+    } else {
+      error.value = err.message;
+    }
   } finally {
     loading.value = false;
   }

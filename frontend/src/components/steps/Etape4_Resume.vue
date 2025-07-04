@@ -9,7 +9,7 @@
       <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
       <p><strong>Activités sélectionnées:</strong></p>
       <ul>
-        <li v-for="activity in selectedActivitiesDetails" :key="activity.id">
+        <li v-for="activity in selectedActivitiesDetails" :key="activity.id!">
           {{ activity.name }} - {{ getPrice(activity) }}€
         </li>
       </ul>
@@ -25,12 +25,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useFormStore } from '@/stores/form';
 import api from '@/api';
 import { useRouter } from 'vue-router';
+import type { Activity } from '@/types';
 
 const store = useFormStore();
 const formData = store.formData;
 const router = useRouter();
 
-const allActivities = ref([]);
+const allActivities = ref<Activity[]>([]);
 
 onMounted(async () => {
   try {
@@ -41,11 +42,11 @@ onMounted(async () => {
   }
 });
 
-const selectedActivitiesDetails = computed(() => {
-  return allActivities.value.filter(activity => formData.activites.includes(activity.name));
+const selectedActivitiesDetails = computed<Activity[]>(() => {
+  return allActivities.value.filter((activity: Activity) => formData.activites.includes(activity.name));
 });
 
-const getPrice = (activity) => {
+const getPrice = (activity: Activity) => {
   if (formData.ville && formData.ville.toLowerCase() === 'fauverney') {
     return activity.resident_price;
   } else {

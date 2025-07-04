@@ -1,3 +1,18 @@
+# Stage 1: Frontend Builder
+FROM node:22-slim as frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy frontend package files and install dependencies
+COPY frontend/package*.json ./
+RUN npm install
+
+# Copy the rest of the frontend application code
+COPY frontend .
+
+# Build the frontend application
+RUN npm run build
+
 # Use a Python base image
 FROM python:3.12-slim-bookworm
 
@@ -8,21 +23,15 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 
 # Install Node.js and npm for frontend build
-RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
-
 # Copy backend requirements and install them
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
-# Copy frontend package files and install dependencies
-COPY frontend/package*.json ./frontend/
-RUN npm install --prefix ./frontend
-
 # Copy the rest of the application code
 COPY . .
 
-# Build the frontend application
-RUN npm run build --prefix ./frontend
+# Copy built frontend from the builder stage
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Expose the port FastAPI will run on
 EXPOSE 8000

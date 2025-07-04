@@ -22,7 +22,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="adhesion in adhesions" :key="adhesion.id">
+        <tr v-for="adhesion in adhesions" :key="adhesion.id!">
           <td>{{ adhesion.code }}</td>
           <td>{{ adhesion.email }}</td>
           <td>{{ adhesion.nom }}</td>
@@ -53,6 +53,7 @@ import api from '@/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
+import type { Activity, Adhesion } from '@/types';
 
 declare global {
   interface Window {
@@ -60,20 +61,20 @@ declare global {
   }
 }
 
-const adhesions = ref([]);
+const adhesions = ref<Adhesion[]>([]);
 const loading = ref(true);
-const error = ref(null);
+const error = ref<string | null>(null);
 const router = useRouter();
 const formStore = useFormStore();
-const allActivities = ref([]);
+const allActivities = ref<Activity[]>([]);
 
 const fetchAdhesions = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions`);
+    const response = await api.get('/api/adhesions');
     adhesions.value = response.data;
-  } catch (err) {
+  } catch (err: any) {
     error.value = err.message;
   } finally {
     loading.value = false;
@@ -82,14 +83,14 @@ const fetchAdhesions = async () => {
 
 const fetchAllActivities = async () => {
   try {
-    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/activities`);
+    const response = await api.get('/api/activities');
     allActivities.value = response.data;
   } catch (err) {
     console.error("Erreur lors du chargement des activités:", err);
   }
 };
 
-const getPrice = (activity, city) => {
+const getPrice = (activity: Activity, city: string) => {
   if (city && city.toLowerCase() === 'fauverney') {
     return activity.resident_price;
   } else {
@@ -97,7 +98,7 @@ const getPrice = (activity, city) => {
   }
 };
 
-const calculateTotalCost = (adhesion) => {
+const calculateTotalCost = (adhesion: Adhesion) => {
   let total = adhesion.adhesion_amount || 0;
   if (adhesion.activites && allActivities.value.length > 0) {
     adhesion.activites.forEach(adhesionActivityName => {
@@ -117,11 +118,11 @@ onMounted(() => {
 
 const editAdhesion = async (code: string) => {
   try {
-    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions/${code}`);
+    const response = await api.get(`/api/adhesions/${code}`);
     formStore.formData = response.data;
     formStore.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
     router.push('/adhesion'); // Redirige vers la page du formulaire
-  } catch (err) {
+  } catch (err: any) {
     alert(`Impossible de charger le formulaire pour le code ${code}: ${err.message}`);
   }
 };
@@ -129,10 +130,10 @@ const editAdhesion = async (code: string) => {
 const validateAdhesion = async (code: string) => {
   if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ?')) return;
   try {
-    await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/adhesions/${code}/validate`);
+    await api.put(`/api/adhesions/${code}/validate`);
     alert('Adhésion validée avec succès !');
     fetchAdhesions(); // Recharger la liste
-  } catch (err) {
+  } catch (err: any) {
     alert(`Erreur lors de la validation de l'adhésion: ${err.response?.data?.detail || err.message}`);
   }
 };
@@ -173,7 +174,7 @@ const exportToCsv = () => {
   document.body.removeChild(link);
 };
 
-const generateReceiptPdf = async (adhesion) => {
+const generateReceiptPdf = async (adhesion: Adhesion) => {
   const receiptContent = `
     <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
       <!-- Header -->
@@ -215,8 +216,8 @@ const generateReceiptPdf = async (adhesion) => {
             <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
             <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
           </tr>
-          ${adhesion.activites.map(activityName => {
-            const activity = allActivities.value.find(act => act.name === activityName);
+          ${adhesion.activites.map((activityName: string) => {
+            const activity = allActivities.value.find((act: Activity) => act.name === activityName);
             if (activity) {
               return `
                 <tr>
@@ -227,7 +228,7 @@ const generateReceiptPdf = async (adhesion) => {
             } else {
               return `
                 <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activityName}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activityName} (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
                 </tr>
               `;

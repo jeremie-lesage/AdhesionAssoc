@@ -5,6 +5,7 @@ import LoadForm from '../views/LoadForm.vue'
 import AdminView from '../views/AdminView.vue'
 import ConfirmationPage from '../views/ConfirmationPage.vue'
 import ActivityAdmin from '../views/ActivityAdmin.vue'
+import AdminLogin from '../views/AdminLogin.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,14 +26,21 @@ const router = createRouter({
       component: LoadForm
     },
     {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: AdminLogin
+    },
+    {
       path: '/admin',
       name: 'admin',
-      component: AdminView
+      component: AdminView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/admin/activities',
       name: 'admin-activities',
-      component: ActivityAdmin
+      component: ActivityAdmin,
+      meta: { requiresAuth: true }
     },
     {
       path: '/confirmation',
@@ -42,9 +50,22 @@ const router = createRouter({
     {
       path: '/admin/adherents-by-activity',
       name: 'admin-adherents-by-activity',
-      component: () => import('../views/AdherentByActivity.vue')
+      component: () => import('../views/AdherentByActivity.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
+
+router.beforeEach((to, from, next) => {
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!localStorage.getItem('admin_token')) {
+      next({ name: 'admin-login' });
+    } else {
+      next();
+    }
+  } else {
+    next();
+  }
+});
 
 export default router
