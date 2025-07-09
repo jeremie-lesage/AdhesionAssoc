@@ -1,5 +1,5 @@
 # Stage 1: Frontend Builder
-FROM node:22-slim as frontend-builder
+FROM node:22-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -17,8 +17,8 @@ RUN npm run build
 FROM python:3.12-slim-bookworm
 
 # Set environment variables
-ENV PYTHONUNBUFFERED 1
-ENV DATABASE_NAME foyer_rural.db
+ENV PYTHONUNBUFFERED=1
+ENV DATABASE_NAME=foyer_rural.db
 
 # Set working directory
 WORKDIR /app

@@ -8,9 +8,16 @@ from typing import List, Optional
 import sqlite3
 import random
 import string
+import json
 import os
 import secrets
 import uuid
+import time
+
+# Rate limiting settings
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 5  # max requests per window
+request_counts = {} # In-memory store for (ip, endpoint) -> (count, last_request_time)
 
 app = FastAPI()
 
@@ -52,8 +59,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def rate_limit(request: Request):
+    client_ip = request.client.host
+    endpoint = request.url.path
+    key = (client_ip, endpoint)
+
+    current_time = time.time()
+
+    if key not in request_counts:
+        request_counts[key] = [0, current_time]
+
+    count, last_request_time = request_counts[key]
+
+    if current_time - last_request_time > RATE_LIMIT_WINDOW:
+        request_counts[key] = [1, current_time]
+    else:
+        if count >= RATE_LIMIT_MAX_REQUESTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Please try again later."
+            )
+        request_counts[key][0] += 1
+
 # Admin login endpoint
-@app.post("/api/admin/login")
+@app.post("/api/admin/login", dependencies=[Depends(rate_limit)])
 async def admin_login(admin_user: AdminLogin):
     if admin_user.username == "admin" and admin_user.password == ADMIN_PASSWORD:
         return {"access_token": ADMIN_TOKEN, "token_type": "bearer"}
@@ -177,9 +206,9 @@ class Activity(ActivityBase):
         from_attributes = True
 
 # Helper function
-def generate_random_code(length=8):
+def generate_random_code(length=12):
     letters = string.ascii_uppercase + string.digits
-    return ''.join(random.choice(letters) for i in range(length))
+    return ''.join(random.choice(letters) for _ in range(length))
 
 # API Endpoints
 @app.get("/api/adhesions", dependencies=[Depends(verify_admin_token)])
@@ -246,7 +275,7 @@ def create_adhesion(adhesion: AdhesionCreate):
     
     return Adhesion(id=new_id, code=code, status="pending", **adhesion.dict())
 
-@app.get("/api/adhesions/{code}", response_model=Adhesion)
+@app.get("/api/adhesions/{code}", response_model=Adhesion, dependencies=[Depends(rate_limit)])
 def read_adhesion(code: str):
     conn = get_db_connection()
     adhesion_row = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
@@ -430,13 +459,12 @@ def delete_activity(activity_id: int):
         conn.close()
         raise HTTPException(status_code=404, detail="Activity not found")
     conn.close()
-    return
 
 # Mount static files for the frontend
 app.mount("/", StaticFiles(directory="./frontend/dist", html=True), name="static")
 
 @app.get("/")
-async def serve_frontend(request: Request):
+def serve_frontend(request: Request):
     with open(os.path.join("./frontend/dist", "index.html"), "r") as f:
         html_content = f.read()
     
