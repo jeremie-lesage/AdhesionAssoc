@@ -1,59 +1,59 @@
 <template>
   <div>
     <h2>Administration des Adhésions</h2>
-    <RouterLink to="/admin/activities" class="button">Gérer les Activités</RouterLink>
-    <RouterLink to="/admin/adherents-by-activity" class="button">Adhérents par Activité</RouterLink>
-    <button @click="exportToCsv" :disabled="!adhesions.length" class="button export-button">Exporter toutes les adhésions en CSV</button>
+    <RouterLink class="button" to="/admin/activities">Gérer les Activités</RouterLink>
+    <RouterLink class="button" to="/admin/adherents-by-activity">Adhérents par Activité</RouterLink>
+    <button :disabled="!adhesions.length" class="button export-button" @click="exportToCsv">Exporter toutes les
+      adhésions en CSV
+    </button>
     <p v-if="loading">Chargement des adhésions...</p>
     <p v-if="error">Erreur lors du chargement des adhésions: {{ error }}</p>
     <table v-if="adhesions.length">
       <thead>
-        <tr>
-          <th>Code</th>
-          <th>Email</th>
-          <th>Nom</th>
-          <th>Prénom</th>
-          <th>Adresse</th>
-          <th>Montant Adhésion</th>
-          <th>Activités</th>
-          <th>Coût Total</th>
-          <th>Statut</th>
-          <th>Actions</th>
-        </tr>
+      <tr>
+        <th>Code</th>
+        <th>Email</th>
+        <th>Nom</th>
+        <th>Prénom</th>
+        <th>Adresse</th>
+        <th>Montant Adhésion</th>
+        <th>Activités</th>
+        <th>Coût Total</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
       </thead>
       <tbody>
-        <tr v-for="adhesion in adhesions" :key="adhesion.id!">
-          <td>{{ adhesion.code }}</td>
-          <td>{{ adhesion.email }}</td>
-          <td>{{ adhesion.nom }}</td>
-          <td>{{ adhesion.prenom }}</td>
-          <td>{{ adhesion.numero_rue }}, {{ adhesion.nom_rue }} <br/> {{ adhesion.code_postal }} {{ adhesion.ville }}</td>
-          <td>{{ adhesion.adhesion_amount }}€</td>
-          <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
-          <td>{{ calculateTotalCost(adhesion) }}€</td>
-          <td>{{ adhesion.status }}</td>
-          <td>
-            <button @click="editAdhesion(adhesion.code)">Corriger</button>
-            <button v-if="adhesion.status === 'pending'" @click="validateAdhesion(adhesion.code)" class="validate-button">Valider</button>
-            <button @click="generateReceiptPdf(adhesion)" class="receipt-button">Reçu</button>
-          </td>
-        </tr>
+      <tr v-for="adhesion in adhesions" :key="adhesion.id!">
+        <td>{{ adhesion.code }}</td>
+        <td>{{ adhesion.email }}</td>
+        <td>{{ adhesion.nom }}</td>
+        <td>{{ adhesion.prenom }}</td>
+        <td>{{ adhesion.numero_rue }}, {{ adhesion.nom_rue }} <br/> {{ adhesion.code_postal }} {{ adhesion.ville }}</td>
+        <td>{{ adhesion.adhesion_amount }}€</td>
+        <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
+        <td>{{ calculateTotalCost(adhesion) }}€</td>
+        <td>{{ adhesion.status }}</td>
+        <td>
+          <button @click="editAdhesion(adhesion.code)">Corriger</button>
+          <button v-if="adhesion.status === 'pending'" class="validate-button" @click="validateAdhesion(adhesion.code)">
+            Valider
+          </button>
+          <button class="receipt-button" @click="generateReceiptPdf(adhesion)">Reçu</button>
+        </td>
+      </tr>
       </tbody>
     </table>
     <p v-else-if="!loading && !error">Aucune adhésion trouvée.</p>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
-import { useRouter, RouterLink } from 'vue-router';
-import { useFormStore } from '@/stores/form';
+<script lang="ts" setup>
+import {ref, onMounted, computed} from 'vue';
+import {useRouter, RouterLink} from 'vue-router';
+import {useFormStore} from '@/stores/form';
 import api from '@/api';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
-import type { Activity, Adhesion } from '@/types';
+import type {Activity, Adhesion} from '@/types';
 
 declare global {
   interface Window {
@@ -75,7 +75,11 @@ const fetchAdhesions = async () => {
     const response = await api.get('/api/adhesions');
     adhesions.value = response.data;
   } catch (err: any) {
-    error.value = err.message;
+    if (err.response && err.response.status === 401) {
+      await router.push({name: 'admin-login'});
+    } else {
+      error.value = err.message;
+    }
   } finally {
     loading.value = false;
   }
@@ -85,8 +89,12 @@ const fetchAllActivities = async () => {
   try {
     const response = await api.get('/api/activities');
     allActivities.value = response.data;
-  } catch (err) {
-    console.error("Erreur lors du chargement des activités:", err);
+  } catch (err: any) {
+    if (err.response && err.response.status === 401) {
+      await router.push({name: 'admin-login'});
+    } else {
+      error.value = err.message;
+    }
   }
 };
 
@@ -142,7 +150,7 @@ const exportToCsv = () => {
   if (!adhesions.value.length) return;
 
   const headers = [
-    "Code", "Email", "Nom", "Prénom", "Numéro Rue", "Nom Rue", 
+    "Code", "Email", "Nom", "Prénom", "Numéro Rue", "Nom Rue",
     "Code Postal", "Ville", "Montant Adhésion", "Activités", "Statut", "Coût Total"
   ];
   const rows = adhesions.value.map(adhesion => [
@@ -165,7 +173,7 @@ const exportToCsv = () => {
     csvContent += row.join(";") + "\n";
   });
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.setAttribute("download", "toutes_adhesions.csv");
@@ -178,77 +186,94 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   const receiptContent = `
     <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
       <!-- Header -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <tr>
-          <td style="width: 50%; vertical-align: top;">
-            <img src="${logoFoyerRural}" alt="Logo Foyer Rural" style="width: 40mm; height: auto;">
-            <p style="margin: 5px 0;"><strong>Foyer Rural de Fauverney</strong></p>
-            <p style="margin: 5px 0;">Mairie de Fauverney</p>
-            <p style="margin: 5px 0;">21110 Fauverney</p>
-            <p style="margin: 5px 0;">SIRET: XXXXXXXXXXXXXX</p>
-          </td>
-          <td style="width: 50%; vertical-align: top; text-align: right;">
-            <h1 style="color: #007bff; margin-bottom: 10px;">REÇU D'ADHÉSION</h1>
-            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-            <p style="margin: 5px 0;"><strong>N° Reçu:</strong> ${adhesion.code}-${new Date().getFullYear()}</p>
-          </td>
-        </tr>
-      </table>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+  <tr>
+  <td style="width: 50%; vertical-align: top;">
+  <img src="${logoFoyerRural}" alt="Logo Foyer Rural" style="width: 40mm; height: auto;">
+  <p style="margin: 5px 0;"><strong>Foyer Rural de Fauverney</strong></p>
+  <p style="margin: 5px 0;">Mairie de Fauverney</p>
+  <p style="margin: 5px 0;">21110 Fauverney</p>
+  <p style="margin: 5px 0;">SIRET: XXXXXXXXXXXXXX</p>
+  </td>
+  <td style="width: 50%; vertical-align: top; text-align: right;">
+  <h1 style="color: #007bff; margin-bottom: 10px;">REÇU D'ADHÉSION</h1>
+  <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+  <p style="margin: 5px 0;"><strong>N° Reçu:</strong> ${adhesion.code}-${new Date().getFullYear()}</p>
+  </td>
+  </tr>
+  </table>
 
       <!-- Adherent Information -->
-      <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9;">
-        <p style="margin: 5px 0;"><strong>Adhérent:</strong> ${adhesion.prenom} ${adhesion.nom}</p>
-        <p style="margin: 5px 0;"><strong>Email:</strong> ${adhesion.email}</p>
-        <p style="margin: 5px 0;"><strong>Adresse:</strong> ${adhesion.numero_rue}, ${adhesion.nom_rue}</p>
-        <p style="margin: 5px 0;">${adhesion.code_postal} ${adhesion.ville}</p>
-      </div>
+  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9;">
+  <p style="margin: 5px 0;"><strong>Adhérent:</strong> ${adhesion.prenom} ${adhesion.nom}</p>
+  <p style="margin: 5px 0;"><strong>Email:</strong> ${adhesion.email}</p>
+  <p style="margin: 5px 0;"><strong>Adresse:</strong> ${adhesion.numero_rue}, ${adhesion.nom_rue}</p>
+  <p style="margin: 5px 0;">${adhesion.code_postal} ${adhesion.ville}</p>
+  </div>
 
       <!-- Cost Details Table -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-        <thead>
-          <tr style="background-color: #007bff; color: white;">
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Description</th>
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Montant (€)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
-          </tr>
-          ${adhesion.activites.map((activityName: string) => {
-            const activity = allActivities.value.find((act: Activity) => act.name === activityName);
-            if (activity) {
-              return `
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+  <thead>
+  <tr style="background-color: #007bff; color: white;">
+  <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Description</th>
+  <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Montant (€)</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+  <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
+  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
+  </tr>
+  ${adhesion.activites.map((activityName: string) => {
+  const activity = allActivities.value.find((act: Activity) => act.name === activityName);
+  if (activity) {
+  return `
+
                 <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activity.name}</td>
-                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${getPrice(activity, adhesion.ville)}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: $
+  {
+    activity.name
+  }
+</td>
+                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$
+  {
+    getPrice(activity, adhesion.ville)
+  }
+</td>
                 </tr>
-              `;
-            } else {
-              return `
+
+  `;
+  } else {
+  return `
+
                 <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activityName} (Non trouvée)</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: $
+  {
+    activityName
+  }
+ (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
                 </tr>
-              `;
-            }
-          }).join('')}
-          <tr style="background-color: #f2f2f2;">
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">TOTAL PAYÉ</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${calculateTotalCost(adhesion)}</td>
-          </tr>
-        </tbody>
-      </table>
+
+  `;
+  }
+  }).join('')}
+  <tr style="background-color: #f2f2f2;">
+  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">TOTAL PAYÉ</td>
+  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${calculateTotalCost(adhesion)}</td>
+  </tr>
+  </tbody>
+  </table>
 
       <!-- Footer -->
-      <div style="text-align: center; font-size: 8pt; color: #777;">
-        <p>Foyer Rural de Fauverney - Association loi 1901</p>
-        <p>Contact: contact@foyer-rural-fauverney.fr</p>
-        <p>Merci pour votre adhésion !</p>
-      </div>
-    </div>
-  `;
+  <div style="text-align: center; font-size: 8pt; color: #777;">
+  <p>Foyer Rural de Fauverney - Association loi 1901</p>
+  <p>Contact: contact@foyer-rural-fauverney.fr</p>
+  <p>Merci pour votre adhésion !</p>
+  </div>
+  </div>
+  `
+;
 
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = receiptContent;
@@ -281,7 +306,9 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
 
     pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
 
-    pdf.save(`reçu_adhesion_${adhesion.code}.pdf`);
+    pdf.save(
+  `reçu_adhesion_${adhesion.code}.pdf`
+);
   } catch (error) {
     console.error("Erreur lors de la génération du PDF:", error);
     alert("Impossible de générer le reçu PDF.");

@@ -31,7 +31,7 @@ const loadForm = async () => {
     }
     store.formData = response.data;
     store.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
-    router.push('/');
+    router.push('/adhesion');
   } catch (error) {
     console.error(error);
     alert('Code invalide ou formulaire non trouvé.');

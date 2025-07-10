@@ -68,7 +68,7 @@ const fetchActivities = async () => {
     activities.value = response.data;
   } catch (err: any) {
     if (err.response && err.response.status === 401) {
-      router.push({ name: 'admin-login' });
+      await router.push({name: 'admin-login'});
     } else {
       error.value = err.message;
     }
