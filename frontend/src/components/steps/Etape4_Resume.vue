@@ -1,31 +1,49 @@
 <template>
   <div>
-    <h2>Étape 4: Résumé</h2>
-    <div>
-      <p><strong>Email:</strong> {{ formData.email }}</p>
-      <p><strong>Adhérant:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
-      <p><strong>Date de Naissance:</strong> {{ formattedDateNaissance }}</p>
-      <p><strong>Adresse:</strong> {{ formData.numero_rue }}, {{ formData.nom_rue }} - {{ formData.code_postal }} {{ formData.ville }}</p>
-      <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
-      <p><strong>Activités sélectionnées:</strong></p>
-      <ul>
-        <li v-for="activity in selectedActivitiesDetails" :key="activity.id!">
-          {{ activity.name }} - {{ getPrice(activity) }}€
-        </li>
-      </ul>
-      <p><strong>Coût total:</strong> {{ totalCost }}€</p>
+    <h2>Finalisation</h2>
+    <div class="summary-container">
+      <div class="summary-section">
+        <h3>Résumé</h3>
+
+        <p><strong>Email:</strong> {{ formData.email }}</p>
+        <p><strong>Adhérant:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
+        <p><strong>Date de Naissance:</strong> {{ formattedDateNaissance }}</p>
+        <p><strong>Adresse:</strong> {{ formData.numero_rue }}, {{ formData.nom_rue }} - {{ formData.code_postal }}
+          {{ formData.ville }}</p>
+        <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
+        <p><strong>Activités sélectionnées:</strong></p>
+        <ul>
+          <li v-for="activity in selectedActivitiesDetails" :key="activity.id!">
+            {{ activity.name }} - {{ getPrice(activity) }}€
+          </li>
+        </ul>
+        <p><strong>Coût total:</strong> {{ totalCost }}€</p>
+      </div>
+      <div class="payment-section">
+        <h3>Moyens de Paiements</h3>
+        <h4>Par chèque</h4>
+        <ul>
+          <li>Soit 1 chèque de {{ totalCost }} € (Encaissement en Octobre)</li>
+          <li>Soit 2 chèques de  {{ totalCost /2 }} € (Encaissement en Octobre et Novembre)</li>
+        </ul>
+        <h4>Par virement</h4>
+        <pre>IBAN: XXXXXX</pre>
+        <b>Pensez à mettre le nom de l'adhérant dans l'objet du virement.</b>
+      </div>
     </div>
+
     <button @click="prevStep">Précédent</button>
     <button @click="submitForm">Valider</button>
   </div>
+
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useFormStore } from '@/stores/form';
+<script lang="ts" setup>
+import {ref, computed, onMounted} from 'vue';
+import {useFormStore} from '@/stores/form';
 import api from '@/api';
-import { useRouter } from 'vue-router';
-import type { Activity } from '@/types';
+import {useRouter} from 'vue-router';
+import type {Activity} from '@/types';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -95,3 +113,23 @@ const submitForm = async () => {
   }
 };
 </script>
+
+<style scoped>
+.summary-container {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.summary-section, .payment-section {
+  flex: 1;
+}
+
+
+@media (max-width: 768px) {
+  .summary-container {
+    flex-direction: column;
+  }
+}
+
+</style>

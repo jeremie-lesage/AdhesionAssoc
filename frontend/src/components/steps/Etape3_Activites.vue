@@ -7,11 +7,10 @@
     <p v-if="formData.ville">
       Tarif appliqué: {{ formData.ville.toLowerCase() === 'fauverney' ? 'résident' : 'extérieur' }}.
     </p>
-    <h3>Liste des activités proposées</h3>
     <p v-if="loadingActivities">Chargement des activités...</p>
     <p v-if="activitiesError">Erreur lors du chargement des activités: {{ activitiesError }}</p>
     <form @submit.prevent="nextStep" v-if="!loadingActivities && !activitiesError">
-      <h3>Adhésion</h3>
+      <h3>Adhésion Obligatoire</h3>
       <div class="adhesion-section">
         <label>
           Montant de l'adhésion:

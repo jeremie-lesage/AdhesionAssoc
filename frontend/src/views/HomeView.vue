@@ -12,6 +12,8 @@
       <li><strong>Récapitulatif et validation :</strong> Vérifiez toutes les informations saisies et validez votre demande. Un code d'accès unique vous sera fourni pour modifier votre demande ultérieurement.</li>
     </ol>
 
+    Vous devez faire <b>une demande par adhérent</b>, mais vous pouvez utiliser <u>la même adresse email</u> de contact.
+
     <h2>Actions disponibles :</h2>
     <div class="action-buttons">
       <button @click="startNewForm" class="button">Nouveau Formulaire</button>
@@ -37,57 +39,63 @@ const startNewForm = () => {
 <style scoped>
 .home-page {
   text-align: center;
-  padding: 20px;
+  padding: 1.5rem;
 }
 
 .home-page h1 {
   color: var(--color-primary);
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
 }
 
 .home-page .logo {
-  max-width: 150px; /* Ajustez la taille selon vos besoins */
+  max-width: 10rem; /* Ajustez la taille selon vos besoins */
   height: auto;
-  margin-bottom: 30px;
+  margin-bottom: 1rem;
 }
 
 .home-page h2 {
   color: var(--color-primary);
-  margin-top: 30px;
-  margin-bottom: 15px;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
 }
 
 .home-page p {
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
 }
 
 .home-page ol {
   text-align: left;
-  margin: 0 auto 30px auto;
-  max-width: 600px;
-  padding-left: 20px;
+  margin: 0 auto 2rem auto;
+  max-width: 40rem;
+  padding-left: 1.5rem;
 }
 
 .home-page ol li {
-  margin-bottom: 10px;
+  margin-bottom: 0.8rem;
 }
 
 .action-buttons {
-  margin-top: 40px;
+  margin-top: 3rem;
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 1.5rem;
 }
 
 .button {
   display: inline-block;
   background-color: var(--color-primary);
   color: white;
-  padding: 12px 25px;
+  padding: 0.8rem 1.5rem;
   border-radius: 5px;
   text-decoration: none;
   font-weight: 600;
   transition: background-color 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .action-buttons {
+    flex-direction: column;
+  }
 }
 
 .button:hover {
