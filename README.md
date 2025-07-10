@@ -80,13 +80,13 @@ Pour compiler le projet, générer une image Docker et lancer le conteneur, suiv
     Pour éviter de perdre vos données à chaque fois que le conteneur est supprimé, vous pouvez monter un volume Docker. Cela permet de stocker le fichier `foyer_rural.db` sur votre machine hôte.
 
     ```bash
-    docker run -p 8000:8000 -v foyer-rural-db:/app/backend foyer-rural-app
+    docker run -p 8000:8000 -e DATABASE_NAME=/data/foyer_2025.db -v foyer-rural-db:/data -it foyer-rural-app
     ```
     Dans cette commande :
     - `-v foyer-rural-db:/app/backend` : Crée un volume nommé `foyer-rural-db` et le monte dans le répertoire `/app/backend` à l'intérieur du conteneur. C'est dans ce répertoire que le fichier `foyer_rural.db` est créé par l'application FastAPI.
 
     Vous pouvez également monter un répertoire local de votre machine hôte :
     ```bash
-    docker run -p 8000:8000 -v $(pwd)/data:/app/backend foyer-rural-app
+    docker run -p 8000:8000 -e DATABASE_NAME=foyer_2025.db -v $PWD/foyer_2025.db:/app/foyer_2025.db -it foyer-rural-app
     ```
     Dans cet exemple, le répertoire `data` (qui sera créé à la racine de votre projet sur votre machine hôte) sera monté dans `/app/backend` à l'intérieur du conteneur. Le fichier `foyer_rural.db` sera alors stocké dans le répertoire `data` de votre projet sur votre machine.
