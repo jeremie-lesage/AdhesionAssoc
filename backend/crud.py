@@ -60,7 +60,7 @@ def create_adhesion(adhesion: AdhesionCreate):
                         "SELECT COUNT(*) FROM adhesion_activities WHERE activity_id = ?", (activity_id,)).fetchone()
                     current_participants = current_participants_row[0]
 
-                    if max_participants > 0 and current_participants >= max_participants:
+                    if 0 < max_participants <= current_participants:
                         conn.close()
                         raise ValueError(f"Activity '{activity_name}' has reached its maximum number of participants.")
 
