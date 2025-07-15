@@ -1,81 +1,78 @@
-import sqlite3
 import os
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-def get_db_connection():
-    DB_NAME = os.environ.get("DATABASE_NAME", "foyer_rural.db")
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@db:5432/foyer_db")
 
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Adhesion(Base):
+    __tablename__ = "adhesions"
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False)
+    email = Column(String, nullable=False)
+    nom = Column(String)
+    prenom = Column(String)
+    date_naissance = Column(String)
+    numero_rue = Column(String)
+    nom_rue = Column(String)
+    code_postal = Column(String)
+    ville = Column(String)
+    adhesion_amount = Column(Float)
+    payment_method = Column(String)
+    status = Column(String, default='pending')
+
+class Activity(Base):
+    __tablename__ = "activities"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(String, default='')
+    location = Column(String, default='')
+    resident_price = Column(Float, default=0.0)
+    external_price = Column(Float, default=0.0)
+    is_child_activity = Column(Boolean, default=False)
+    is_adult_activity = Column(Boolean, default=False)
+    max_participants = Column(Integer, default=0)
+
+class AdhesionActivity(Base):
+    __tablename__ = "adhesion_activities"
+    adhesion_id = Column(Integer, primary_key=True)
+    activity_id = Column(Integer, primary_key=True)
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def create_tables():
     print("Creating/updating database tables...")
-    conn = get_db_connection()
-    conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute('''
-                 CREATE TABLE IF NOT EXISTS adhesions
-                 (
-                     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                     code            TEXT UNIQUE NOT NULL,
-                     email           TEXT        NOT NULL,
-                     nom             TEXT,
-                     prenom          TEXT,
-                     date_naissance  TEXT,
-                     numero_rue      TEXT,
-                     nom_rue         TEXT,
-                     code_postal     TEXT,
-                     ville           TEXT,
-                     adhesion_amount REAL,
-                     payment_method  TEXT,
-                     status          TEXT DEFAULT 'pending'
-                 )
-                 ''')
-    conn.execute('''
-                 CREATE TABLE IF NOT EXISTS activities
-                 (
-                     id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                     name              TEXT UNIQUE NOT NULL,
-                     description       TEXT    DEFAULT '',
-                     location          TEXT    DEFAULT '',
-                     resident_price    REAL    DEFAULT 0.0,
-                     external_price    REAL    DEFAULT 0.0,
-                     is_child_activity BOOLEAN DEFAULT FALSE,
-                     is_adult_activity BOOLEAN DEFAULT FALSE,
-                     max_participants  INTEGER DEFAULT 0
-                 )
-                 ''')
-    conn.execute('''
-                 CREATE TABLE IF NOT EXISTS adhesion_activities
-                 (
-                     adhesion_id INTEGER NOT NULL,
-                     activity_id INTEGER NOT NULL,
-                     PRIMARY KEY (adhesion_id, activity_id),
-                     FOREIGN KEY (adhesion_id) REFERENCES adhesions (id) ON DELETE CASCADE,
-                     FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
-                 )
-                 ''')
-    conn.execute('''
-                 CREATE TABLE IF NOT EXISTS admins
-                 (
-                     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                     username       TEXT UNIQUE NOT NULL,
-                     hashed_password TEXT NOT NULL
-                 )
-                 ''')
+    Base.metadata.create_all(engine)
 
-    default_activities = [
-        ('danse', 'Cours de danse pour tous les âges', 'Salle Polyvalente', 100.0, 120.0, True, True),
-        ('gym', 'Séances de gymnastique douce', 'Gymnase', 80.0, 100.0, False, True),
-        ('pilate', 'Cours de Pilate pour renforcer le corps', 'Salle de Fitness', 90.0, 110.0, False, True)
+    db = SessionLocal()
+    default_activities_data = [
+        {'name': 'danse', 'description': 'Cours de danse pour tous les âges', 'location': 'Salle Polyvalente', 'resident_price': 100.0, 'external_price': 120.0, 'is_child_activity': True, 'is_adult_activity': True},
+        {'name': 'gym', 'description': 'Séances de gymnastique douce', 'location': 'Gymnase', 'resident_price': 80.0, 'external_price': 100.0, 'is_child_activity': False, 'is_adult_activity': True},
+        {'name': 'pilate', 'description': 'Cours de Pilate pour renforcer le corps', 'location': 'Salle de Fitness', 'resident_price': 90.0, 'external_price': 110.0, 'is_child_activity': False, 'is_adult_activity': True}
     ]
-    for name, description, location, resident_price, external_price, is_child, is_adult in default_activities:
-        conn.execute(
-            'INSERT OR IGNORE INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (name, description, location, resident_price, external_price, is_child, is_adult))
 
-    conn.commit()
-    conn.close()
-
+    for activity_data in default_activities_data:
+        existing_activity = db.query(Activity).filter_by(name=activity_data['name']).first()
+        if not existing_activity:
+            activity = Activity(**activity_data)
+            db.add(activity)
+    db.commit()
+    db.close()
 
 if __name__ == "__main__":
     create_tables()

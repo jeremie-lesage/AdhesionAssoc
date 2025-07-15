@@ -1,10 +1,12 @@
-import sqlite3
 import string
 import random
 from typing import List, Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from models import Adhesion, AdhesionCreate, Activity, ActivityCreate
-from database import get_db_connection
+from database import Adhesion, Activity, AdhesionActivity, Admin
+from models import AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUser, Adhesion as PydanticAdhesion, Activity as PydanticActivity, AdminUserOut
+
 
 def generate_random_code(length=12):
     letters = string.ascii_uppercase + string.digits
@@ -12,315 +14,214 @@ def generate_random_code(length=12):
 
 
 # Adhesion CRUD
-def get_adhesions() -> List[Adhesion]:
-    conn = get_db_connection()
-    adhesions_rows = conn.execute("SELECT * FROM adhesions").fetchall()
-
+def get_adhesions(db: Session) -> List[PydanticAdhesion]:
+    adhesions = db.query(Adhesion).all()
     result = []
-    for row in adhesions_rows:
-        adhesion_data = dict(row)
-        activities_rows = conn.execute(
-            "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
-            (adhesion_data['id'],)
-        ).fetchall()
-        adhesion_data['activites'] = [r['name'] for r in activities_rows]
-        adhesion_data['status'] = row['status']
-        adhesion_data['numero_rue'] = row['numero_rue']
-        adhesion_data['nom_rue'] = row['nom_rue']
-        adhesion_data['code_postal'] = row['code_postal']
-        adhesion_data['ville'] = row['ville']
-        adhesion_data['adhesion_amount'] = row['adhesion_amount']
-        adhesion_data['payment_method'] = row['payment_method']
-        result.append(adhesion_data)
-    conn.close()
-    return [Adhesion(**adhesion_data) for adhesion_data in result]
-
-
-def create_adhesion(adhesion: AdhesionCreate):
-    code = generate_random_code()
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO adhesions (code, email, nom, prenom, date_naissance, numero_rue, nom_rue, code_postal, ville, adhesion_amount, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (code, adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue,
-             adhesion.nom_rue, adhesion.code_postal, adhesion.ville, adhesion.adhesion_amount, adhesion.payment_method)
-        )
-        new_id = cursor.lastrowid
-
-        if adhesion.activites:
-            for activity_name in adhesion.activites:
-                activity_id_row = conn.execute("SELECT id, max_participants FROM activities WHERE name = ?",
-                                               (activity_name,)).fetchone()
-                if activity_id_row:
-                    activity_id = activity_id_row['id']
-                    max_participants = activity_id_row['max_participants']
-
-                    current_participants_row = conn.execute(
-                        "SELECT COUNT(*) FROM adhesion_activities WHERE activity_id = ?", (activity_id,)).fetchone()
-                    current_participants = current_participants_row[0]
-
-                    if 0 < max_participants <= current_participants:
-                        conn.close()
-                        raise ValueError(f"Activity '{activity_name}' has reached its maximum number of participants.")
-
-                    conn.execute(
-                        "INSERT INTO adhesion_activities (adhesion_id, activity_id) VALUES (?, ?)",
-                        (new_id, activity_id)
-                    )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise ValueError("Email already registered")
-    finally:
-        conn.close()
-
-    return Adhesion(id=new_id, code=code, status="pending", **adhesion.dict())
-
-
-def get_adhesion_by_code(code: str) -> Optional[Adhesion]:
-    conn = get_db_connection()
-    adhesion_row = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
-    if adhesion_row is None:
-        conn.close()
-        return None
-
-    adhesion_data = dict(adhesion_row)
-
-    activities_rows = conn.execute(
-        "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
-        (adhesion_data['id'],)
-    ).fetchall()
-    conn.close()
-
-    adhesion_data['activites'] = [row['name'] for row in activities_rows]
-    adhesion_data['payment_method'] = adhesion_row['payment_method']
-
-    return Adhesion(**adhesion_data)
-
-
-def validate_adhesion(code: str) -> Optional[Adhesion]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE adhesions SET status = 'validated' WHERE code = ? AND status = 'pending'", (code,))
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
-        return None
-
-    updated_adhesion_row = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
-    adhesion_data = dict(updated_adhesion_row)
-
-    activities_rows = conn.execute(
-        "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
-        (adhesion_data['id'],)
-    ).fetchall()
-    adhesion_data['activites'] = [row['name'] for row in activities_rows]
-    adhesion_data['payment_method'] = updated_adhesion_row['payment_method']
-    conn.close()
-    return Adhesion(**adhesion_data)
-
-
-def update_adhesion(code: str, adhesion: AdhesionCreate) -> Optional[Adhesion]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    existing_adhesion = conn.execute("SELECT id, status FROM adhesions WHERE code = ?", (code,)).fetchone()
-    if existing_adhesion is None:
-        conn.close()
-        return None
-
-    adhesion_id = existing_adhesion['id']
-    current_status = existing_adhesion['status']
-
-    if current_status == 'validated':
-        conn.close()
-        raise ValueError("Cannot update a validated adhesion")
-
-    try:
-        cursor.execute(
-            "UPDATE adhesions SET email = ?, nom = ?, prenom = ?, date_naissance = ?, numero_rue = ?, nom_rue = ?, code_postal = ?, ville = ?, adhesion_amount = ?, payment_method = ? WHERE code = ?",
-            (adhesion.email, adhesion.nom, adhesion.prenom, adhesion.date_naissance, adhesion.numero_rue,
-             adhesion.nom_rue, adhesion.code_postal, adhesion.ville, adhesion.adhesion_amount, adhesion.payment_method,
-             code)
-        )
-
-        conn.execute("DELETE FROM adhesion_activities WHERE adhesion_id = ?", (adhesion_id,))
-
-        if adhesion.activites:
-            for activity_name in adhesion.activites:
-                activity_id_row = conn.execute("SELECT id FROM activities WHERE name = ?", (activity_name,)).fetchone()
-                if activity_id_row:
-                    activity_id = activity_id_row['id']
-                    conn.execute(
-                        "INSERT INTO adhesion_activities (adhesion_id, activity_id) VALUES (?, ?)",
-                        (adhesion_id, activity_id)
-                    )
-        conn.commit()
-
-        updated_adhesion = conn.execute("SELECT * FROM adhesions WHERE code = ?", (code,)).fetchone()
-        activities_rows = conn.execute(
-            "SELECT a.name FROM activities a JOIN adhesion_activities aa ON a.id = aa.activity_id WHERE aa.adhesion_id = ?",
-            (adhesion_id,)
-        ).fetchall()
-
-        updated_adhesion_data = dict(updated_adhesion)
-        updated_adhesion_data['activites'] = [row['name'] for row in activities_rows]
-        updated_adhesion_data['payment_method'] = updated_adhesion['payment_method']
-
-        return Adhesion(**updated_adhesion_data)
-    except Exception as e:
-        conn.close()
-        raise e
-    finally:
-        conn.close()
-
-
-def get_adherents_by_activity(activity_id: int) -> List[Adhesion]:
-    conn = get_db_connection()
-    activity_row = conn.execute("SELECT id FROM activities WHERE id = ?", (activity_id,)).fetchone()
-    if activity_row is None:
-        conn.close()
-        raise ValueError("Activity not found")
-
-    adhesions_rows = conn.execute(
-        "SELECT a.* FROM adhesions a JOIN adhesion_activities aa ON a.id = aa.adhesion_id WHERE aa.activity_id = ?",
-        (activity_id,)
-    ).fetchall()
-
-    result = []
-    for row in adhesions_rows:
-        adhesion_data = dict(row)
-        activities_rows = conn.execute(
-            "SELECT act.name FROM activities act JOIN adhesion_activities ad_act ON act.id = ad_act.activity_id WHERE ad_act.adhesion_id = ?",
-            (adhesion_data['id'],)
-        ).fetchall()
-        adhesion_data['activites'] = [r['name'] for r in activities_rows]
-        result.append(adhesion_data)
-    conn.close()
-    return [Adhesion(**adhesion_data) for adhesion_data in result]
-
-
-# Activity CRUD
-def update_activity(activity_id: int, activity: ActivityCreate) -> Optional[Activity]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE activities SET name = ?, description = ?, location = ?, resident_price = ?, external_price = ?, is_child_activity = ?, is_adult_activity = ?, max_participants = ? WHERE id = ?",
-        (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price,
-         activity.is_child_activity, activity.is_adult_activity, activity.max_participants, activity_id)
-    )
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
-        return None
-
-    updated_activity = conn.execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
-    conn.close()
-    return Activity(**dict(updated_activity))
-
-
-def get_activities() -> List[Activity]:
-    conn = get_db_connection()
-    activities = conn.execute("SELECT * FROM activities").fetchall()
-    result = []
-    for row in activities:
-        activity_data = dict(row)
-        participants_row = conn.execute("SELECT COUNT(*) FROM adhesion_activities WHERE activity_id = ?",
-                                        (activity_data['id'],)).fetchone()
-        activity_data['current_participants'] = participants_row[0]
-        result.append(Activity(**activity_data))
-    conn.close()
+    for adhesion in adhesions:
+        activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == adhesion.id).all()
+        adhesion_data = adhesion.__dict__
+        adhesion_data['activites'] = [activity.name for activity in activities]
+        result.append(PydanticAdhesion(**adhesion_data))
     return result
 
 
-def create_activity(activity: ActivityCreate) -> Activity:
-    conn = get_db_connection()
+def create_adhesion(db: Session, adhesion: AdhesionCreate) -> PydanticAdhesion:
+    code = generate_random_code()
+    db_adhesion = Adhesion(
+        code=code,
+        email=adhesion.email,
+        nom=adhesion.nom,
+        prenom=adhesion.prenom,
+        date_naissance=adhesion.date_naissance,
+        numero_rue=adhesion.numero_rue,
+        nom_rue=adhesion.nom_rue,
+        code_postal=adhesion.code_postal,
+        ville=adhesion.ville,
+        adhesion_amount=adhesion.adhesion_amount,
+        payment_method=adhesion.payment_method
+    )
+    db.add(db_adhesion)
+    db.commit()
+    db.refresh(db_adhesion)
+
+    if adhesion.activites:
+        for activity_name in adhesion.activites:
+            activity = db.query(Activity).filter(Activity.name == activity_name).first()
+            if activity:
+                current_participants = db.query(func.count(AdhesionActivity.adhesion_id)).filter(AdhesionActivity.activity_id == activity.id).scalar()
+                if 0 < activity.max_participants <= current_participants:
+                    db.rollback()
+                    raise ValueError(f"Activity '{activity_name}' has reached its maximum number of participants.")
+
+                db_adhesion_activity = AdhesionActivity(adhesion_id=db_adhesion.id, activity_id=activity.id)
+                db.add(db_adhesion_activity)
+        db.commit()
+        db.refresh(db_adhesion)
+
+    adhesion_data = db_adhesion.__dict__
+    activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == db_adhesion.id).all()
+    adhesion_data['activites'] = [activity.name for activity in activities]
+    return PydanticAdhesion(**adhesion_data)
+
+
+def get_adhesion_by_code(db: Session, code: str) -> Optional[PydanticAdhesion]:
+    adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+    if adhesion is None:
+        return None
+
+    activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == adhesion.id).all()
+    adhesion_data = adhesion.__dict__
+    adhesion_data['activites'] = [activity.name for activity in activities]
+    return PydanticAdhesion(**adhesion_data)
+
+
+def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion]:
+    adhesion = db.query(Adhesion).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
+    if adhesion is None:
+        return None
+    adhesion.status = 'validated'
+    db.commit()
+    db.refresh(adhesion)
+
+    activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == adhesion.id).all()
+    adhesion_data = adhesion.__dict__
+    adhesion_data['activites'] = [activity.name for activity in activities]
+    return PydanticAdhesion(**adhesion_data)
+
+
+def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optional[PydanticAdhesion]:
+    db_adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+    if db_adhesion is None:
+        return None
+
+    if db_adhesion.status == 'validated':
+        raise ValueError("Cannot update a validated adhesion")
+
+    for var, value in adhesion.model_dump(exclude_unset=True).items():
+        if var != "activites": # activites are handled separately
+            setattr(db_adhesion, var, value)
+
+    db.query(AdhesionActivity).filter(AdhesionActivity.adhesion_id == db_adhesion.id).delete()
+    if adhesion.activites:
+        for activity_name in adhesion.activites:
+            activity = db.query(Activity).filter(Activity.name == activity_name).first()
+            if activity:
+                db_adhesion_activity = AdhesionActivity(adhesion_id=db_adhesion.id, activity_id=activity.id)
+                db.add(db_adhesion_activity)
+    db.commit()
+    db.refresh(db_adhesion)
+
+    activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == db_adhesion.id).all()
+    adhesion_data = db_adhesion.__dict__
+    adhesion_data['activites'] = [activity.name for activity in activities]
+    return PydanticAdhesion(**adhesion_data)
+
+
+def get_adherents_by_activity(db: Session, activity_id: int) -> List[PydanticAdhesion]:
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if activity is None:
+        raise ValueError("Activity not found")
+
+    adhesions = db.query(Adhesion).join(AdhesionActivity).filter(AdhesionActivity.activity_id == activity_id).all()
+
+    result = []
+    for adhesion in adhesions:
+        activities = db.query(Activity.name).join(AdhesionActivity).filter(AdhesionActivity.adhesion_id == adhesion.id).all()
+        adhesion_data = adhesion.__dict__
+        adhesion_data['activites'] = [activity.name for activity in activities]
+        result.append(PydanticAdhesion(**adhesion_data))
+    return result
+
+
+# Activity CRUD
+def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> Optional[PydanticActivity]:
+    db_activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if db_activity is None:
+        return None
+
+    for var, value in activity.model_dump(exclude_unset=True).items():
+        setattr(db_activity, var, value)
+
+    db.commit()
+    db.refresh(db_activity)
+    return PydanticActivity(**db_activity.__dict__)
+
+
+def get_activities(db: Session) -> List[PydanticActivity]:
+    activities = db.query(Activity).all()
+    result = []
+    for activity in activities:
+        current_participants = db.query(func.count(AdhesionActivity.adhesion_id)).filter(AdhesionActivity.activity_id == activity.id).scalar()
+        activity_data = activity.__dict__
+        activity_data['current_participants'] = current_participants
+        result.append(PydanticActivity(**activity_data))
+    return result
+
+
+def create_activity(db: Session, activity: ActivityCreate) -> PydanticActivity:
+    db_activity = Activity(**activity.model_dump())
+    db.add(db_activity)
     try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO activities (name, description, location, resident_price, external_price, is_child_activity, is_adult_activity, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
-            (activity.name, activity.description, activity.location, activity.resident_price, activity.external_price,
-             activity.is_child_activity, activity.is_adult_activity, activity.max_participants))
-        new_id = cursor.fetchone()[0]
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise ValueError("Activity with this name already exists")
-    finally:
-        conn.close()
-    return Activity(id=new_id, **activity.dict())
+        db.commit()
+        db.refresh(db_activity)
+    except Exception as e:
+        db.rollback()
+        raise ValueError(f"Activity with name {activity.name} already exists")
+    return PydanticActivity(**db_activity.__dict__)
 
 
-def delete_activity(activity_id: int) -> bool:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM activities WHERE id = ?", (activity_id,))
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
+def delete_activity(db: Session, activity_id: int) -> bool:
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if activity is None:
         return False
-    conn.close()
+    db.delete(activity)
+    db.commit()
     return True
 
 
 # Admin CRUD
-def get_admin(admin_id: int) -> Optional[dict]:
-    conn = get_db_connection()
-    admin = conn.execute("SELECT * FROM admins WHERE id = ?", (admin_id,)).fetchone()
-    conn.close()
-    return admin
-
-
-def get_admin_by_username(username: str) -> Optional[dict]:
-    conn = get_db_connection()
-    admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-    conn.close()
-    return admin
-
-
-def get_admins() -> List[dict]:
-    conn = get_db_connection()
-    admins = conn.execute("SELECT id, username FROM admins").fetchall()
-    conn.close()
-    return [dict(admin) for admin in admins]
-
-
-def create_admin(admin: dict) -> dict:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO admins (username, hashed_password) VALUES (?, ?)",
-        (admin['username'], admin['hashed_password'])
-    )
-    conn.commit()
-    new_id = cursor.lastrowid
-    conn.close()
-    return {"id": new_id, **admin}
-
-
-def update_admin(admin_id: int, admin: dict) -> Optional[dict]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE admins SET username = ?, hashed_password = ? WHERE id = ?",
-        (admin['username'], admin['hashed_password'], admin_id)
-    )
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
+def get_admin(db: Session, admin_id: int) -> Optional[AdminUser]:
+    admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if admin is None:
         return None
-    conn.close()
-    return get_admin(admin_id)
+    return AdminUser(**admin.__dict__)
 
 
-def delete_admin(admin_id: int) -> bool:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM admins WHERE id = ?", (admin_id,))
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
+def get_admin_by_username(db: Session, username: str) -> Optional[AdminUser]:
+    admin = db.query(Admin).filter(Admin.username == username).first()
+    if admin is None:
+        return None
+    return AdminUser(**admin.__dict__)
+
+
+def get_admins(db: Session) -> List[AdminUserOut]:
+    admins = db.query(Admin).all()
+    return [AdminUserOut(**admin.__dict__) for admin in admins]
+
+
+def create_admin(db: Session, admin: AdminUserCreate) -> AdminUserOut:
+    db_admin = Admin(username=admin.username, hashed_password=admin.password) # password will be hashed before calling this
+    db.add(db_admin)
+    db.commit()
+    db.refresh(db_admin)
+    return AdminUserOut(**db_admin.__dict__)
+
+
+def update_admin(db: Session, admin_id: int, admin: AdminUserCreate) -> Optional[AdminUserOut]:
+    db_admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if db_admin is None:
+        return None
+    db_admin.username = admin.username
+    db_admin.hashed_password = admin.password # password will be hashed before calling this
+    db.commit()
+    db.refresh(db_admin)
+    return AdminUserOut(**db_admin.__dict__)
+
+
+def delete_admin(db: Session, admin_id: int) -> bool:
+    admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if admin is None:
         return False
-    conn.close()
+    db.delete(admin)
+    db.commit()
     return True

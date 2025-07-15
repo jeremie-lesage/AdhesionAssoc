@@ -47,8 +47,6 @@ class AdhesionBase(BaseModel):
     :type ville: Optional[str]
     :ivar adhesion_amount: The amount associated with the adhesion.
     :type adhesion_amount: Optional[float]
-    :ivar activites: A list of activities associated with the adhesion.
-    :type activites: Optional[List[str]]
     :ivar payment_method: The method of payment for the adhesion.
     :type payment_method: Optional[str]
     """
@@ -61,11 +59,11 @@ class AdhesionBase(BaseModel):
     code_postal: Optional[str] = None
     ville: Optional[str] = None
     adhesion_amount: Optional[float] = None
-    activites: Optional[List[str]] = []
     payment_method: Optional[str] = None
 
 
 class AdhesionCreate(AdhesionBase):
+    activites: Optional[List[str]] = [] # This will be handled in crud.py
     pass
 
 
@@ -89,7 +87,6 @@ class Adhesion(AdhesionBase):
     id: int
     code: str
     status: str
-    payment_method: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -154,7 +151,6 @@ class Activity(ActivityBase):
         :type current_participants: Optional[int]
     """
     id: int
-    current_participants: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -181,4 +177,3 @@ class AdminUserOut(AdminUserBase):
 
     class Config:
         from_attributes = True
-
