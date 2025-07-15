@@ -17,9 +17,9 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
     container_name: foyer-frontend-builder
-    command: npm run build
+    restart: no
     volumes:
-      - ../frontend/dist:/app/dist # Mount the build output to a named volume or host path for Caddy to pick up
+      - ../frontend/dist:/app/dist:ro
 
   caddy:
     image: caddy:2.7.6-alpine
