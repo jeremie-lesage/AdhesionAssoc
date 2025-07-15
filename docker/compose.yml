@@ -31,9 +31,9 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
-      - ../frontend/dist:/usr/share/caddy/html # Mount the built frontend assets
+      - ../frontend/dist:/usr/share/caddy/html:ro
     environment:
-      BACKEND_URL: https://inscription.foyerruralfauverney.fr/api # Replace with your actual backend URL
+      BACKEND_URL: https://inscription.foyerruralfauverney.fr
     depends_on:
       - frontend_builder
       - backend
