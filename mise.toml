@@ -1,0 +1,24 @@
+[tools]
+python = "3.12"
+uv = "latest"
+node = "latest"
+
+[env]
+# Use the project name derived from the current directory
+PROJECT_NAME = "{{ config_root | basename }}"
+
+# Automatic virtualenv activation
+_.python.venv = { path = ".venv", create = true }
+
+
+[tasks.install]
+description = "Install dependencies"
+alias = "i"
+run = "uv pip install -r backend/requirements.txt"
+
+[tasks.serve]
+description = "Run local server"
+alias = "s"
+dir = "backend"
+run = "uvicorn main:app --host 0.0.0.0 --port 8000"
+
