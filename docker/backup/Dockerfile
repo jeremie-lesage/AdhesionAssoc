@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --no-cache postgresql-client cron openssl curl
+RUN apk add --no-cache postgresql-client dcron openssl curl
 
 WORKDIR /app
 
