@@ -175,3 +175,10 @@ class AdminUser(AdminUserBase):
     class Config:
         from_attributes = True
 
+
+class AdminUserOut(AdminUserBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+

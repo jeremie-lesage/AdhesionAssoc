@@ -4,6 +4,7 @@
     <RouterLink class="button" to="/admin/activities">Gérer les Activités</RouterLink>
     <RouterLink class="button" to="/admin/adherents-by-activity">Adhérents par Activité</RouterLink>
     <RouterLink class="button" to="/admin/accounts">Gérer les comptes</RouterLink>
+    <button @click="handleLogout" class="button">Déconnexion</button>
     <button :disabled="!adhesions.length" class="button export-button" @click="exportToCsv">Exporter toutes les
       adhésions en CSV
     </button>
@@ -53,7 +54,7 @@
 import {ref, onMounted, computed} from 'vue';
 import {useRouter, RouterLink} from 'vue-router';
 import {useFormStore} from '@/stores/form';
-import api from '@/api';
+import api, { logout } from '@/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
@@ -71,6 +72,12 @@ const error = ref<string | null>(null);
 const router = useRouter();
 const formStore = useFormStore();
 const allActivities = ref<Activity[]>([]);
+
+const handleLogout = () => {
+  logout();
+  router.push({ name: 'admin-login' });
+};
+
 
 const fetchAdhesions = async () => {
   loading.value = true;

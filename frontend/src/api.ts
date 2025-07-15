@@ -30,6 +30,11 @@ export const login = async (credentials: any) => {
   return token;
 };
 
+export const logout = () => {
+  localStorage.removeItem('admin_token');
+};
+
+
 export const getAdmins = async (): Promise<AdminUser[]> => {
   const response = await api.get('/api/admins');
   return response.data;

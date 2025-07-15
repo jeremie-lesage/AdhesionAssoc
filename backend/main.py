@@ -7,7 +7,7 @@ import string
 
 from models import (
     Adhesion, AdhesionCreate, Activity, ActivityCreate,
-    AdminUser, AdminUserCreate
+    AdminUser, AdminUserCreate, AdminUserOut
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -145,7 +145,7 @@ def delete_activity(activity_id: int):
 
 
 # Admin Endpoints
-@app.get("/api/admins", response_model=list[AdminUser], dependencies=[Depends(get_current_admin)])
+@app.get("/api/admins", response_model=list[AdminUserOut], dependencies=[Depends(get_current_admin)])
 def list_admins():
     return crud.get_admins()
 
