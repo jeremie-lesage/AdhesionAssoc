@@ -1,9 +1,17 @@
 inscription.foyerruralfauverney.fr {
-    reverse_proxy /api/* backend:8000
-    root * /usr/share/caddy/html
-    file_server
-    templates
+    @api path /api/*
+    handle @api {
+        reverse_proxy backend:8000
+    }
+
+    handle {
+        root * /usr/share/caddy/html
+        try_files {path} /index.html
+        file_server
+        templates
+    }
 }
+
 
 pga.foyerruralfauverney.fr {
     basicauth {

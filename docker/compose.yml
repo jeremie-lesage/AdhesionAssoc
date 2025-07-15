@@ -37,7 +37,8 @@ services:
     depends_on:
       - frontend_builder
       - backend
-
+    networks:
+      - foyer-net
   
 
   db:
