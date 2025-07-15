@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -8,7 +9,7 @@ from passlib.context import CryptContext
 
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "your-secret-key"  # TODO: use a more secure key and load from config
+SECRET_KEY = os.getenv("SECRET_KEY", "your-insecure-default-secret-key")  # TODO: Ensure this is loaded securely in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
