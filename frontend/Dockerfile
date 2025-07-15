@@ -1,5 +1,5 @@
 # Stage 1: Build the Vue.js application
-FROM node:20-alpine as build-stage
+FROM node:20-alpine AS build-stage
 
 WORKDIR /app
 
@@ -11,12 +11,13 @@ RUN npm install
 
 # Copy the rest of the application source code
 COPY . .
+COPY entrypoint.sh /app/entrypoint.sh
 
 # Build the application
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
-FROM nginx:stable-alpine as production-stage
+FROM nginx:stable-alpine AS production-stage
 
 # Copy the built assets from the build stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
@@ -26,3 +27,6 @@ EXPOSE 80
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
+
+# Use the custom entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

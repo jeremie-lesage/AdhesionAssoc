@@ -18,6 +18,8 @@ services:
       dockerfile: Dockerfile
     container_name: foyer-frontend
     restart: unless-stopped
+    environment:
+      BACKEND_URL: https://inscription.foyerruralfauverney.fr/api # Replace with your actual backend URL
     networks:
       - foyer-net
 
