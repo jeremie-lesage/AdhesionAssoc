@@ -61,7 +61,7 @@ Pour lancer l'ensemble de l'application (frontend, backend et reverse proxy) ave
 2.  **Lancez les services :**
     Placez-vous à la racine du projet et exécutez la commande suivante :
     ```bash
-    docker-compose -f docker/docker-compose.yml up -d --build
+    docker compose -f docker/compose.yml up -d --build
     ```
     Cette commande va :
     - Construire les images pour le frontend et le backend.
@@ -77,6 +77,6 @@ Pour lancer l'ensemble de l'application (frontend, backend et reverse proxy) ave
 4.  **Arrêter les services :**
     Pour arrêter tous les conteneurs, utilisez la commande :
     ```bash
-    docker-compose -f docker/docker-compose.yml down
+    docker compose -f docker/compose.yml down
     ```
-    *Note : Le fichier de la base de données SQLite est stocké à l'intérieur du conteneur backend. Si vous souhaitez persister les données entre les redémarrages, vous devrez ajouter un volume pour le service `backend` dans le fichier `docker/docker-compose.yml`.*
+    *Note : Le fichier de la base de données SQLite est stocké à l'intérieur du conteneur backend. Si vous souhaitez persister les données entre les redémarrages, vous devrez ajouter un volume pour le service `backend` dans le fichier `docker/compose.yml`.*

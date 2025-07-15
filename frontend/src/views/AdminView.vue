@@ -53,6 +53,9 @@ import {ref, onMounted, computed} from 'vue';
 import {useRouter, RouterLink} from 'vue-router';
 import {useFormStore} from '@/stores/form';
 import api from '@/api';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
 import type {Activity, Adhesion} from '@/types';
 
 declare global {
@@ -185,15 +188,15 @@ const exportToCsv = () => {
 const generateReceiptPdf = async (adhesion: Adhesion) => {
   const receiptContent = `
     <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
-      <!-- Header -->
   <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
   <tr>
   <td style="width: 50%; vertical-align: top;">
   <img src="${logoFoyerRural}" alt="Logo Foyer Rural" style="width: 40mm; height: auto;">
   <p style="margin: 5px 0;"><strong>Foyer Rural de Fauverney</strong></p>
-  <p style="margin: 5px 0;">Mairie de Fauverney</p>
+  <p style="margin: 5px 0;">Rue Saint-Georges</p>
   <p style="margin: 5px 0;">21110 Fauverney</p>
-  <p style="margin: 5px 0;">SIRET: XXXXXXXXXXXXXX</p>
+  <p style="margin: 5px 0;">SIRET: 498 772 417 00016</p>
+  <p style="margin: 5px 0;">Identifiant association: W212002406</p>
   </td>
   <td style="width: 50%; vertical-align: top; text-align: right;">
   <h1 style="color: #007bff; margin-bottom: 10px;">REÇU D'ADHÉSION</h1>
@@ -203,7 +206,6 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   </tr>
   </table>
 
-      <!-- Adherent Information -->
   <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9;">
   <p style="margin: 5px 0;"><strong>Adhérent:</strong> ${adhesion.prenom} ${adhesion.nom}</p>
   <p style="margin: 5px 0;"><strong>Email:</strong> ${adhesion.email}</p>
@@ -211,7 +213,6 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   <p style="margin: 5px 0;">${adhesion.code_postal} ${adhesion.ville}</p>
   </div>
 
-      <!-- Cost Details Table -->
   <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
   <thead>
   <tr style="background-color: #007bff; color: white;">
@@ -227,35 +228,15 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   ${adhesion.activites.map((activityName: string) => {
   const activity = allActivities.value.find((act: Activity) => act.name === activityName);
   if (activity) {
-  return `
-
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: $
-  {
-    activity.name
-  }
-</td>
-                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$
-  {
-    getPrice(activity, adhesion.ville)
-  }
-</td>
-                </tr>
-
-  `;
+  return `       <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activity.name  }</td>
+                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${ getPrice(activity, adhesion.ville)  }</td>
+                </tr>`;
   } else {
-  return `
-
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: $
-  {
-    activityName
-  }
- (Non trouvée)</td>
+  return `      <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activityName } (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
-                </tr>
-
-  `;
+                </tr>`;
   }
   }).join('')}
   <tr style="background-color: #f2f2f2;">
@@ -265,7 +246,6 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   </tbody>
   </table>
 
-      <!-- Footer -->
   <div style="text-align: center; font-size: 8pt; color: #777;">
   <p>Foyer Rural de Fauverney - Association loi 1901</p>
   <p>Contact: contact@foyer-rural-fauverney.fr</p>
@@ -307,7 +287,9 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
     pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
 
     pdf.save(
+
   `reçu_adhesion_${adhesion.code}.pdf`
+
 );
   } catch (error) {
     console.error("Erreur lors de la génération du PDF:", error);
