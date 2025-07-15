@@ -54,6 +54,14 @@ def create_tables():
                      FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
                  )
                  ''')
+    conn.execute('''
+                 CREATE TABLE IF NOT EXISTS admins
+                 (
+                     id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                     username       TEXT UNIQUE NOT NULL,
+                     hashed_password TEXT NOT NULL
+                 )
+                 ''')
 
     default_activities = [
         ('danse', 'Cours de danse pour tous les âges', 'Salle Polyvalente', 100.0, 120.0, True, True),

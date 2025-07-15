@@ -262,3 +262,65 @@ def delete_activity(activity_id: int) -> bool:
         return False
     conn.close()
     return True
+
+
+# Admin CRUD
+def get_admin(admin_id: int) -> Optional[dict]:
+    conn = get_db_connection()
+    admin = conn.execute("SELECT * FROM admins WHERE id = ?", (admin_id,)).fetchone()
+    conn.close()
+    return admin
+
+
+def get_admin_by_username(username: str) -> Optional[dict]:
+    conn = get_db_connection()
+    admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+    conn.close()
+    return admin
+
+
+def get_admins() -> List[dict]:
+    conn = get_db_connection()
+    admins = conn.execute("SELECT id, username FROM admins").fetchall()
+    conn.close()
+    return [dict(admin) for admin in admins]
+
+
+def create_admin(admin: dict) -> dict:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO admins (username, hashed_password) VALUES (?, ?)",
+        (admin['username'], admin['hashed_password'])
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return {"id": new_id, **admin}
+
+
+def update_admin(admin_id: int, admin: dict) -> Optional[dict]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE admins SET username = ?, hashed_password = ? WHERE id = ?",
+        (admin['username'], admin['hashed_password'], admin_id)
+    )
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        return None
+    conn.close()
+    return get_admin(admin_id)
+
+
+def delete_admin(admin_id: int) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM admins WHERE id = ?", (admin_id,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    conn.close()
+    return True

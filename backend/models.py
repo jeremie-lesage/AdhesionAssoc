@@ -158,3 +158,20 @@ class Activity(ActivityBase):
 
     class Config:
         from_attributes = True
+
+
+class AdminUserBase(BaseModel):
+    username: str
+
+
+class AdminUserCreate(AdminUserBase):
+    password: str
+
+
+class AdminUser(AdminUserBase):
+    id: int
+    hashed_password: str
+
+    class Config:
+        from_attributes = True
+

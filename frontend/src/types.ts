@@ -23,5 +23,18 @@ export interface Adhesion {
   ville: string;
   adhesion_amount: number;
   activites: string[];
+  payment_method: string;
   status: string;
+}
+
+export type AdhesionCreate = Omit<Adhesion, 'id' | 'code' | 'status'>;
+
+export interface AdminUser {
+  id: number;
+  username: string;
+}
+
+export interface AdminUserCreate {
+  username: string;
+  password?: string;
 }

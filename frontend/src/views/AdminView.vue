@@ -3,6 +3,7 @@
     <h2>Administration des Adhésions</h2>
     <RouterLink class="button" to="/admin/activities">Gérer les Activités</RouterLink>
     <RouterLink class="button" to="/admin/adherents-by-activity">Adhérents par Activité</RouterLink>
+    <RouterLink class="button" to="/admin/accounts">Gérer les comptes</RouterLink>
     <button :disabled="!adhesions.length" class="button export-button" @click="exportToCsv">Exporter toutes les
       adhésions en CSV
     </button>

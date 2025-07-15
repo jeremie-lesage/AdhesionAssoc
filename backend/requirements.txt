@@ -1,5 +1,6 @@
-fastapi
-uvicorn
-python-jose
-passlib
-pydantic[email]
+fastapi[all]==0.116.1
+uvicorn==0.35.0
+python-jose[cryptography]==3.5.0
+passlib==1.7.4
+bcrypt==4.0.1
+pydantic[email]==2.11.7

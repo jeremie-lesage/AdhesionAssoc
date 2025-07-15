@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/api';
+import { login as apiLogin } from '@/api';
 
 const username = ref('admin');
 const password = ref('');
@@ -31,12 +31,10 @@ const login = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await api.post('/api/admin/login', {
+    await apiLogin({
       username: username.value,
       password: password.value,
     });
-    const { access_token } = response.data;
-    localStorage.setItem('admin_token', access_token);
     router.push('/admin'); // Redirect to admin dashboard
   } catch (err: any) {
     console.error("Login error:", err);
