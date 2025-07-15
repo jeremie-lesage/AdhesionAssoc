@@ -13,13 +13,13 @@ services:
       - foyer-net
 
   frontend_builder:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: foyer-frontend-builder
+    working_dir: /app
+    command: sh -c "npm install && npm run build"
     restart: no
     volumes:
-      - ../frontend/dist:/app/dist:ro
+      - ../frontend:/app
 
   caddy:
     image: caddy:2.7.6-alpine
