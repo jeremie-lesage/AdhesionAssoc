@@ -11,7 +11,6 @@ RUN npm install
 
 # Copy the rest of the application source code
 COPY . .
-COPY entrypoint.sh /app/entrypoint.sh
 
 # Build the application
 RUN npm run build
@@ -27,6 +26,3 @@ EXPOSE 80
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
-
-# Use the custom entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]

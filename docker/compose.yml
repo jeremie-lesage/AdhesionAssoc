@@ -12,16 +12,14 @@ services:
     networks:
       - foyer-net
 
-  frontend:
+  frontend_builder:
     build:
       context: ../frontend
       dockerfile: Dockerfile
-    container_name: foyer-frontend
-    restart: unless-stopped
-    environment:
-      BACKEND_URL: https://inscription.foyerruralfauverney.fr/api # Replace with your actual backend URL
-    networks:
-      - foyer-net
+    container_name: foyer-frontend-builder
+    command: npm run build
+    volumes:
+      - ../frontend/dist:/app/dist # Mount the build output to a named volume or host path for Caddy to pick up
 
   caddy:
     image: caddy:2.7.6-alpine
@@ -33,11 +31,14 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
+      - ../frontend/dist:/usr/share/caddy/html # Mount the built frontend assets
+    environment:
+      BACKEND_URL: https://inscription.foyerruralfauverney.fr/api # Replace with your actual backend URL
     depends_on:
-      - frontend
+      - frontend_builder
       - backend
-    networks:
-      - foyer-net
+
+  
 
   db:
     image: postgres:16-alpine
