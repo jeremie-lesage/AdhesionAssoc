@@ -2,3 +2,10 @@ inscription.foyerruralfauverney.fr {
     reverse_proxy /api/* backend:8000
     reverse_proxy frontend:80
 }
+
+pga.foyerruralfauverney.fr {
+    basicauth {
+        security ${PGADMIN_PROXY_PASSWORD}
+    }
+    reverse_proxy pgadmin:80
+}
