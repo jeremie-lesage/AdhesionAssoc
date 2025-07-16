@@ -1,11 +1,11 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@db:5432/foyer_db")
-
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@localhost:5432/foyer_rural_db")
 engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -25,6 +25,8 @@ class Adhesion(Base):
     payment_method = Column(String)
     status = Column(String, default='pending')
 
+    adhesion_activities_link = relationship("AdhesionActivity", back_populates="adhesion")
+
 class Activity(Base):
     __tablename__ = "activities"
     id = Column(Integer, primary_key=True, index=True)
@@ -37,10 +39,15 @@ class Activity(Base):
     is_adult_activity = Column(Boolean, default=False)
     max_participants = Column(Integer, default=0)
 
+    adhesions_link = relationship("AdhesionActivity", back_populates="activity")
+
 class AdhesionActivity(Base):
     __tablename__ = "adhesion_activities"
-    adhesion_id = Column(Integer, primary_key=True)
-    activity_id = Column(Integer, primary_key=True)
+    adhesion_id = Column(Integer, ForeignKey("adhesions.id"), primary_key=True)
+    activity_id = Column(Integer, ForeignKey("activities.id"), primary_key=True)
+
+    adhesion = relationship("Adhesion", back_populates="adhesion_activities_link")
+    activity = relationship("Activity", back_populates="adhesions_link")
 
 class Admin(Base):
     __tablename__ = "admins"

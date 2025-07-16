@@ -16,7 +16,7 @@ declare global {
 // Set the base URL for axios based on the global variable or default
 // This needs to be done before any component tries to make an API call
 import api from './api'; // Import the configured axios instance
-api.defaults.baseURL = window.BACKEND_URL || 'http://localhost:8000';
+api.defaults.baseURL = window.BACKEND_URL || 'http://localhost:5173';
 
 const app = createApp(App)
 

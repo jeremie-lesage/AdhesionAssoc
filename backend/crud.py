@@ -122,7 +122,7 @@ def get_adherents_by_activity(db: Session, activity_id: int) -> List[PydanticAdh
     if activity is None:
         raise ValueError("Activity not found")
 
-    adhesions = db.query(Adhesion).join(AdhesionActivity).filter(AdhesionActivity.activity_id == activity_id).all()
+    adhesions = db.query(Adhesion).join(Adhesion.adhesion_activities_link).filter(AdhesionActivity.activity_id == activity_id).all()
 
     result = []
     for adhesion in adhesions:

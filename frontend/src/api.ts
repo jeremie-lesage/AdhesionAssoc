@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AdminUser, AdminUserCreate, Activity, Adhesion, AdhesionCreate } from './types';
 
-const backendUrl = window.BACKEND_URL || 'http://localhost:8000';
+const backendUrl = window.BACKEND_URL || 'http://localhost:5173';
 
 const api = axios.create({
   baseURL: backendUrl,
