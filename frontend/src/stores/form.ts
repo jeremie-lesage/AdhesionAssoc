@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import type {Activity} from "@/types.ts";
 
 export const useFormStore = defineStore('form', {
   state: () => ({
@@ -12,7 +13,7 @@ export const useFormStore = defineStore('form', {
       nom_rue: '',
       code_postal: '',
       ville: '',
-      activites: [] as number[],
+      activities: [] as Activity[],
       adhesion_amount: null as number | null,
       adhesion_selected: false,
       code: null as string | null,
@@ -42,7 +43,7 @@ export const useFormStore = defineStore('form', {
         nom_rue: '',
         code_postal: '',
         ville: '',
-        activites: [],
+        activities: [],
         adhesion_amount: null,
         adhesion_selected: false,
         code: null,
