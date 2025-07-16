@@ -43,15 +43,18 @@
         <label
             :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
 
-          <div style="width: 75%; display: inline-block"><input v-model="selectedActivityIds"
-                                                                :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
-                                                                :value="activity.id"
-                                                                type="checkbox"> {{ activity.name }} <span
+          <div class="activity-info">
+            <input v-model="selectedActivityIds"
+                   :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
+                   :value="activity.id"
+                   type="checkbox"> {{ activity.name }} <span
               v-if="activity.description">- {{ activity.description }}</span></div>
           <span v-if="getPrice(activity) !== null" style="font-weight: bold"> Tarif: {{ getPrice(activity) }}€</span>
           <br/>
-          <div v-if="activity.location" style="width: 72%; display: inline-block; padding-left: 1.5rem"> {{ activity.location }}</div>
-          <span v-if="activity.max_participants > 0"  > (Places restantes: {{
+          <div v-if="activity.location" class="activity-location">
+            {{ activity.location }}
+          </div>
+          <span v-if="activity.max_participants > 0"> (Places restantes: {{
               activity.max_participants - (activity.current_participants || 0)
             }})
           </span>
@@ -161,4 +164,33 @@ const getPrice = (activity: Activity) => {
 .disabled-activity input[type="checkbox"] {
   cursor: not-allowed;
 }
+
+.activity-info {
+  width: 75%;
+  display: inline-block;
+}
+
+.activity-location {
+  width: 72%;
+  display: inline-block;
+  padding-left: 1.5rem
+}
+
+
+@media (max-width: 768px) {
+  .activity-info {
+    width: 100%;
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+  }
+
+  .activity-location {
+    width: 100%;
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+  }
+}
+
 </style>
