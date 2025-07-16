@@ -34,6 +34,8 @@
 
     <button @click="prevStep">Précédent</button>
     <button @click="submitForm">Valider</button>
+
+    <ConfirmationModal :visible="isModalVisible" @close="handleModalClose" />
   </div>
 
 </template>
@@ -44,12 +46,15 @@ import {useFormStore} from '@/stores/form';
 import api from '@/api';
 import {useRouter} from 'vue-router';
 import type {Activity} from '@/types';
+import ConfirmationModal from '../ConfirmationModal.vue';
 
 const store = useFormStore();
 const formData = store.formData;
 const router = useRouter();
 
 const allActivities = ref<Activity[]>([]);
+const isModalVisible = ref(false);
+const isUpdate = ref(false);
 
 onMounted(async () => {
   try {
@@ -95,7 +100,6 @@ const submitForm = async () => {
     return;
   }
 
-  // Create a payload with activity IDs instead of objects
   const { adhesion_selected, ...restOfFormData } = store.formData;
   const payload = {
     ...restOfFormData,
@@ -103,32 +107,34 @@ const submitForm = async () => {
   };
 
   try {
-    let response;
     if (store.formData.code) {
-      response = await api.put(`/api/adhesions/${store.formData.code}`, payload);
-      alert(`Formulaire mis à jour !`);
-      store.resetForm();
-      router.push('/'); // Redirige vers la page d'accueil après la mise à jour
+      await api.put(`/api/adhesions/${store.formData.code}`, payload);
+      isUpdate.value = true;
     } else {
-      response = await api.post('/api/adhesions', payload);
+      const response = await api.post('/api/adhesions', payload);
       const newCode = response.data.code;
-
-      // Save the new code to localStorage
       const recentCodes = JSON.parse(localStorage.getItem('recentCodes') || '[]');
       recentCodes.unshift(newCode);
       if (recentCodes.length > 5) {
         recentCodes.pop();
       }
       localStorage.setItem('recentCodes', JSON.stringify(recentCodes));
-
-
-      store.resetForm(); // Réinitialise le formulaire mais garde le code
-      store.lastGeneratedCode = newCode; // Stocke le code
-      router.push('/confirmation'); // Redirige vers la page de confirmation
+      store.lastGeneratedCode = newCode;
     }
+    isModalVisible.value = true;
   } catch (error) {
     console.error(error);
     alert('Une erreur est survenue lors de la validation du formulaire.');
+  }
+};
+
+const handleModalClose = () => {
+  isModalVisible.value = false;
+  store.resetForm();
+  if (isUpdate.value) {
+    router.push('/');
+  } else {
+    router.push('/confirmation');
   }
 };
 </script>
