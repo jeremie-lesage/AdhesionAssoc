@@ -51,5 +51,19 @@ export const useFormStore = defineStore('form', {
       };
       this.lastGeneratedCode = null;
     },
+    setFormData(data: any) {
+      this.formData = { ...this.formData, ...data };
+      if (data.activities && Array.isArray(data.activities)) {
+        this.formData.activities = data.activities;
+      }
+    },
+    setFormDataForEdit(data: any) {
+      this.resetForm();
+      this.formData = { ...this.formData, ...data };
+      if (data.activities && Array.isArray(data.activities)) {
+        this.formData.activities = data.activities;
+      }
+      this.step = 1;
+    },
   },
 });

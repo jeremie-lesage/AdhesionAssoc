@@ -128,6 +128,15 @@ def get_adherents_by_activity(db: Session, activity_id: int) -> List[AdhesionSch
     return [AdhesionSchema.model_validate(adhesion) for adhesion in activity.adhesions]
 
 
+def delete_adhesion(db: Session, code: str) -> bool:
+    adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+    if adhesion is None:
+        return False
+    db.delete(adhesion)
+    db.commit()
+    return True
+
+
 # Activity CRUD
 def get_activities(db: Session) -> List[ActivitySchema]:
     activities = db.query(Activity).options(selectinload(Activity.adhesions)).all()

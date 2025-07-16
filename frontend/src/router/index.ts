@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/admin/adhesions',
+      name: 'admin-adhesions',
+      component: () => import('../views/AdhesionAdminView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/admin/activities',
       name: 'admin-activities',
       component: ActivityAdmin,

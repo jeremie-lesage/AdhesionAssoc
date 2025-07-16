@@ -20,6 +20,17 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      logout();
+      window.location.href = '/admin/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const login = async (credentials: any) => {
   const params = new URLSearchParams();
   params.append('username', credentials.username);
@@ -98,9 +109,18 @@ export const updateAdhesion = async (code: string, adhesion: AdhesionCreate): Pr
     return response.data;
 };
 
+export const updateAdhesionPayment = async (code: string, paymentMethod: string): Promise<Adhesion> => {
+    const response = await api.put(`/api/adhesions/${code}/pay`, { payment_method: paymentMethod });
+    return response.data;
+};
+
 export const getAdherentsByActivity = async (activityId: number): Promise<Adhesion[]> => {
     const response = await api.get(`/api/activities/${activityId}/adherents`);
     return response.data;
+};
+
+export const deleteAdhesion = async (code: string): Promise<void> => {
+    await api.delete(`/api/adhesions/${code}`);
 };
 
 export default api;

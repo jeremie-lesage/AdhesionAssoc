@@ -43,14 +43,14 @@ const useCode = (selectedCode: string) => {
 
 const loadForm = async () => {
   try {
+    // On vérifie juste si le formulaire existe et n'est pas finalisé
     const response = await api.get(`/api/adhesions/${code.value}`);
-    if (response.data.status === 'validated') {
-      alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
+    if (response.data.status === 'validated' || response.data.status === 'paid') {
+      alert('Ce formulaire a déjà été finalisé et ne peut plus être modifié.');
       return;
     }
-    store.formData = response.data;
-    store.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
-    router.push('/adhesion');
+    // On redirige vers le formulaire qui se chargera de récupérer les données
+    router.push({ name: 'adhesion', query: { code: code.value } });
   } catch (error) {
     console.error(error);
     alert('Code invalide ou formulaire non trouvé.');

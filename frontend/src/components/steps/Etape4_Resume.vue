@@ -96,8 +96,9 @@ const submitForm = async () => {
   }
 
   // Create a payload with activity IDs instead of objects
+  const { adhesion_selected, ...restOfFormData } = store.formData;
   const payload = {
-    ...store.formData,
+    ...restOfFormData,
     activities: store.formData.activities.map(activity => activity.id)
   };
 

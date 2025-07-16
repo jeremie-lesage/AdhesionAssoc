@@ -16,9 +16,15 @@ from auth import (
 )
 from rate_limiter import rate_limit
 from database import create_tables, get_db
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from datetime import datetime
+
 import crud
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
 
 
 @app.on_event("startup")
@@ -116,6 +122,41 @@ def update_adhesion(code: str, adhesion: AdhesionCreate, db: Session = Depends(g
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
+
+@app.get("/api/adhesions/{code}/receipt", response_class=HTMLResponse)
+def get_adhesion_receipt(code: str, db: Session = Depends(get_db)):
+    adhesion = crud.get_adhesion_by_code(db, code)
+    if adhesion is None or adhesion.status != 'paid':
+        raise HTTPException(status_code=404, detail="Paid adhesion not found")
+
+    total_cost = adhesion.adhesion_amount or 0
+    activities_details = []
+    for activity in adhesion.activities:
+        is_resident = adhesion.ville.lower() == 'fauverney'
+        price = activity.resident_price if is_resident else activity.external_price
+        total_cost += price or 0
+        activities_details.append({"name": activity.name, "price": price})
+
+    context = {
+        "request": {},
+        "code": adhesion.code,
+        "payment_date": datetime.now().strftime("%d/%m/%Y"),
+        "prenom": adhesion.prenom,
+        "nom": adhesion.nom,
+        "email": adhesion.email,
+        "payment_method": adhesion.payment_method,
+        "adhesion_amount": adhesion.adhesion_amount,
+        "activities": activities_details,
+        "total_cost": total_cost,
+    }
+    return templates.TemplateResponse("receipt.html", context)
+
+
+@app.delete("/api/adhesions/{code}", status_code=204, dependencies=[Depends(get_current_admin)])
+def delete_adhesion(code: str, db: Session = Depends(get_db)):
+    if not crud.delete_adhesion(db, code):
+        raise HTTPException(status_code=404, detail="Adhesion not found")
 
 
 @app.get("/api/activities/{activity_id}/adherents", response_model=list[AdhesionSchema],

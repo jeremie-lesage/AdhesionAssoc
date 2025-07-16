@@ -1,457 +1,97 @@
 <template>
-  <div>
-    <h2>Administration des Adhésions</h2>
-    <RouterLink class="button" to="/admin/activities">Gérer les Activités</RouterLink>
-    <RouterLink class="button" to="/admin/adherents-by-activity">Adhérents par Activité</RouterLink>
-    <RouterLink class="button" to="/admin/accounts">Gérer les comptes</RouterLink>
-    <button @click="handleLogout" class="button">Déconnexion</button>
-    <button :disabled="!filteredAdhesions.length" class="button export-button" @click="exportToCsv">Exporter les adhésions filtrées en CSV
-    </button>
-    <div>
-      <label for="status-filter">Filtrer par statut:</label>
-      <select id="status-filter" v-model="selectedStatus">
-        <option value="">Tous</option>
-        <option value="pending">En attente</option>
-        <option value="validated">Validé</option>
-        <option value="paid">Payé</option>
-      </select>
-    </div>
-    <p v-if="loading">Chargement des adhésions...</p>
-    <p v-if="error">Erreur lors du chargement des adhésions: {{ error }}</p>
-    <table v-if="filteredAdhesions.length">
-      <thead>
-      <tr>
-        <th>Code</th>
-        <th>Email</th>
-        <th>Nom complet</th>
-        <th>Ville</th>
-        <th>Montant Adhésion</th>
-        <th>Activités</th>
-        <th>Coût Total</th>
-        <th>Statut</th>
-        <th>Actions</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="adhesion in filteredAdhesions" :key="adhesion.id!">
-        <td>{{ adhesion.code }}</td>
-        <td :title="adhesion.email">{{ truncateEmail(adhesion.email) }}</td>
-        <td>{{ adhesion.prenom }} {{ adhesion.nom }}</td>
-        <td>{{ adhesion.code_postal }} {{ adhesion.ville }}</td>
-        <td>{{ adhesion.adhesion_amount }}€</td>
-        <td>{{ getActivityNames(adhesion.activities) }}</td>
-        <td>{{ calculateTotalCost(adhesion) }}€</td>
-        <td>{{ adhesion.status }}</td>
-        <td class="actions-cell">
-          <button class="edit-button" @click="editAdhesion(adhesion.code)">Corriger</button>
-          <button v-if="adhesion.status === 'pending'" class="validate-button" @click="validateAdhesion(adhesion.code)">
-            Valider
-          </button>
-          <button v-if="adhesion.status === 'pending'" class="pay-button" @click="updatePayment(adhesion.code, 'virement')">
-            Payer Virement
-          </button>
-          <button v-if="adhesion.status === 'pending'" class="pay-button" @click="updatePayment(adhesion.code, 'cheque')">
-            Payer Chèque
-          </button>
-          <button class="receipt-button" @click="generateReceiptPdf(adhesion)">Reçu</button>
-        </td>
-      </tr>
-      </tbody>
-    </table>
-    <p v-else-if="!loading && !error">Aucune adhésion trouvée.</p>
+  <div class="admin-view">
+    <h1>Espace Administration</h1>
+    <p>Bienvenue dans l'espace d'administration. Choisissez une section à gérer.</p>
+    <nav class="admin-nav">
+      <ul>
+        <li>
+          <RouterLink to="/admin/adhesions" class="nav-link">
+            <span class="icon">📄</span>
+            <span>Gérer les Demandes d'Adhésion</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/admin/activities" class="nav-link">
+            <span class="icon">🤸</span>
+            <span>Gérer les Activités</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/admin/adherents-by-activity" class="nav-link">
+            <span class="icon">👥</span>
+            <span>Voir les Adhérents par Activité</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/admin/accounts" class="nav-link">
+            <span class="icon">🔑</span>
+            <span>Gérer les Comptes Administrateur</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </nav>
   </div>
 </template>
 
-<script lang="ts" setup>
-import {ref, onMounted, onActivated, computed} from 'vue';
-import {useRouter, RouterLink} from 'vue-router';
-import {useFormStore} from '@/stores/form';
-import api, { logout } from '@/api';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import logoFoyerRural from '@/assets/images/logo_foyer_rural.png';
-import type {Activity, Adhesion} from '@/types';
-
-declare global {
-  interface Window {
-    BACKEND_URL: string;
-  }
-}
-
-const adhesions = ref<Adhesion[]>([]);
-const loading = ref(true);
-const error = ref<string | null>(null);
-const router = useRouter();
-const formStore = useFormStore();
-const allActivities = ref<Activity[]>([]);
-const selectedStatus = ref('');
-
-const filteredAdhesions = computed(() => {
-  if (!selectedStatus.value) {
-    return adhesions.value;
-  }
-  return adhesions.value.filter(adhesion => adhesion.status === selectedStatus.value);
-});
-
-const truncateEmail = (email: string, maxLength = 15): string => {
-  if (email.length <= maxLength) {
-    return email;
-  }
-  return email.slice(0, maxLength) + '...';
-};
-
-const handleLogout = () => {
-  logout();
-  router.push({ name: 'admin-login' });
-};
-
-
-const fetchAdhesions = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    const response = await api.get('/api/adhesions');
-    adhesions.value = response.data;
-  } catch (err: any) {
-    if (err.response && err.response.status === 401) {
-      await router.push({name: 'admin-login'});
-    } else {
-      error.value = err.message;
-    }
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fetchAllActivities = async () => {
-  try {
-    const response = await api.get('/api/activities');
-    allActivities.value = response.data;
-  } catch (err: any) {
-    if (err.response && err.response.status === 401) {
-      await router.push({name: 'admin-login'});
-    } else {
-      error.value = err.message;
-    }
-  }
-};
-
-const getPrice = (activity: Activity, city: string) => {
-  if (city && city.toLowerCase() === 'fauverney') {
-    return activity.resident_price;
-  } else {
-    return activity.external_price;
-  }
-};
-
-const calculateTotalCost = (adhesion: Adhesion) => {
-  let total = adhesion.adhesion_amount || 0;
-  if (adhesion.activities) {
-    adhesion.activities.forEach(activity => {
-      total += getPrice(activity, adhesion.ville) || 0;
-    });
-  }
-  return total;
-};
-
-const getActivityNames = (activities: Activity[]) => {
-  if (!activities || activities.length === 0) {
-    return 'Aucune';
-  }
-  return activities.map(activity => activity.name).join(', ');
-};
-
-onMounted(() => {
-  fetchAdhesions();
-  fetchAllActivities();
-});
-
-onActivated(() => {
-  fetchAdhesions();
-  fetchAllActivities();
-});
-
-const editAdhesion = async (code: string) => {
-  try {
-    const response = await api.get(`/api/adhesions/${code}`);
-    formStore.formData = response.data;
-    formStore.formData.code = response.data.code; // Assurez-vous que le code est bien stocké
-    router.push('/adhesion'); // Redirige vers la page du formulaire
-  } catch (err: any) {
-    alert(`Impossible de charger le formulaire pour le code ${code}: ${err.message}`);
-  }
-};
-
-const updatePayment = async (code: string, method: 'virement' | 'cheque') => {
-  if (!confirm(`Confirmez-vous le paiement par ${method} pour cette adhésion ?`)) return;
-  try {
-    await api.put(`/api/adhesions/${code}/pay`, { payment_method: method });
-    alert('Paiement enregistré avec succès !');
-    fetchAdhesions(); // Recharger la liste
-  } catch (err: any) {
-    alert(`Erreur lors de l'enregistrement du paiement: ${err.response?.data?.detail || err.message}`);
-  }
-};
-
-const validateAdhesion = async (code: string) => {
-  if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ? Un email de confirmation sera envoyé.')) return;
-  try {
-    await api.put(`/api/adhesions/${code}/validate`);
-    alert('Adhésion validée et email de confirmation envoyé !');
-    fetchAdhesions(); // Recharger la liste
-  } catch (err: any) {
-    alert(`Erreur lors de la validation de l'adhésion: ${err.response?.data?.detail || err.message}`);
-  }
-};
-
-const exportToCsv = () => {
-  if (!filteredAdhesions.value.length) return;
-
-  const headers = [
-    "Code", "Email", "Nom complet", "Numéro Rue", "Nom Rue",
-    "Code Postal", "Ville", "Montant Adhésion", "Activités", "Statut", "Coût Total"
-  ];
-  const rows = filteredAdhesions.value.map(adhesion => [
-    adhesion.code,
-    adhesion.email,
-    `${adhesion.prenom} ${adhesion.nom}`,
-    adhesion.numero_rue,
-    adhesion.nom_rue,
-    adhesion.code_postal,
-    adhesion.ville,
-    adhesion.adhesion_amount,
-    getActivityNames(adhesion.activities as Activity[]),
-    adhesion.status,
-    calculateTotalCost(adhesion)
-  ]);
-
-  let csvContent = headers.join(";") + "\n";
-  rows.forEach(row => {
-    csvContent += row.join(";") + "\n";
-  });
-
-  const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "toutes_adhesions.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-const generateReceiptPdf = async (adhesion: Adhesion) => {
-  const receiptContent = `
-    <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 0px solid #ccc;">
-  <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-  <tr>
-  <td style="width: 50%; vertical-align: top;">
-  <img src="${logoFoyerRural}" alt="Logo Foyer Rural" style="width: 40mm; height: auto;">
-  <p style="margin: 5px 0;"><strong>Foyer Rural de Fauverney</strong></p>
-  <p style="margin: 5px 0;">Rue Saint-Georges</p>
-  <p style="margin: 5px 0;">21110 Fauverney</p>
-  <p style="margin: 5px 0;">SIRET: 498 772 417 00016</p>
-  <p style="margin: 5px 0;">Identifiant association: W212002406</p>
-  </td>
-  <td style="width: 50%; vertical-align: top; text-align: right;">
-  <h1 style="color: #007bff; margin-bottom: 10px;">REÇU D'ADHÉSION</h1>
-  <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-  <p style="margin: 5px 0;"><strong>N° Reçu:</strong> ${adhesion.code}-${new Date().getFullYear()}</p>
-  </td>
-  </tr>
-  </table>
-
-  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9;">
-  <p style="margin: 5px 0;"><strong>Adhérent:</strong> ${adhesion.prenom} ${adhesion.nom}</p>
-  <p style="margin: 5px 0;"><strong>Email:</strong> ${adhesion.email}</p>
-  <p style="margin: 5px 0;"><strong>Adresse:</strong> ${adhesion.numero_rue} ${adhesion.nom_rue}</p>
-  <p style="margin: 5px 0;">${adhesion.code_postal} ${adhesion.ville}</p>
-  </div>
-
-  <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-  <thead>
-  <tr style="color: #202020;">
-  <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Description</th>
-  <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Montant (€)</th>
-  </tr>
-  </thead>
-  <tbody>
-  <tr>
-  <td style="padding: 8px; border: 1px solid #202020;">Adhésion</td>
-  <td style="padding: 8px; border: 1px solid #202020; text-align: right;">${adhesion.adhesion_amount} €</td>
-  </tr>
-  ${adhesion.activities.map((activity: Activity) => {
-    if (activity) {
-      return `       <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activity.name}</td>
-                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${getPrice(activity, adhesion.ville)} €</td>
-                </tr>`;
-    } else {
-      return `      <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: (Non trouvée)</td>
-                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
-                </tr>`;
-    }
-  }).join('')}
-  <tr style="background-color: #f2f2f2;">
-  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">TOTAL PAYÉ</td>
-  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${calculateTotalCost(adhesion)} €</td>
-  </tr>
-  </tbody>
-  </table>
-
-  <div style="text-align: center; font-size: 8pt; color: #777;">
-  <p>Foyer Rural de Fauverney - Association loi 1901</p>
-  <p>Contact: fauverneyfoyer@gmail.com</p>
-  <p>Merci pour votre adhésion !</p>
-  </div>
-  </div>
-  `
-;
-
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = receiptContent;
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-9999px';
-  document.body.appendChild(tempDiv);
-
-  try {
-    const canvas = await html2canvas(tempDiv, { scale: 4 });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-
-    const finalWidth = imgWidth * ratio;
-    const finalHeight = imgHeight * ratio;
-
-    const x = (pdfWidth - finalWidth) / 2;
-    const y = (pdfHeight - finalHeight) / 2;
-
-    pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
-
-    pdf.save(
-
-  `reçu_adhesion_${adhesion.code}.pdf`
-
-);
-  } catch (error) {
-    console.error("Erreur lors de la génération du PDF:", error);
-    alert("Impossible de générer le reçu PDF.");
-  } finally {
-    document.body.removeChild(tempDiv);
-  }
-};
+<script setup lang="ts">
+import { RouterLink } from 'vue-router';
 </script>
 
 <style scoped>
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
+.admin-view {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-th, td {
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+p {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.admin-nav ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: #fff;
   border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-th {
-  background-color: #f2f2f2;
-}
-
-.actions-cell button {
-  padding: 3px 8px;
-  font-size: 12px;
-  margin: 2px;
-  border-radius: 3px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  line-height: 1.5;
-}
-
-.actions-cell button:hover {
-  opacity: 0.9;
-}
-
-.edit-button {
-    background-color: #6c757d;
-    color: white;
-}
-
-.edit-button:hover {
-    background-color: #5a6268;
-}
-
-.validate-button {
-  background-color: #28a745;
-  color: white;
-}
-
-.validate-button:hover {
-  background-color: #218838;
-}
-
-.pay-button {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.pay-button:hover {
-  background-color: #e0a800;
-}
-
-.receipt-button {
-  background-color: #007bff;
-  color: white;
-}
-
-.receipt-button:hover {
-  background-color: #0056b3;
-}
-
-
-.button {
-  display: inline-block;
-  padding: 10px 15px;
-  background-color: #007bff;
-  color: white;
+  border-radius: 8px;
   text-decoration: none;
-  border-radius: 5px;
-  margin-bottom: 0.5rem;
-  margin-right: 0.5rem;
+  color: #333;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.button:hover {
-  background-color: #0056b3;
+.nav-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
 }
 
-.export-button {
-  background-color: #28a745;
-  margin-left: 0;
+.nav-link .icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
 }
 
-.export-button:hover {
-  background-color: #218838;
-}
-
-.export-button {
-  background-color: #28a745;
-  margin-left: 0;
-}
-
-.export-button:hover {
-  background-color: #218838;
+.nav-link span {
+  font-weight: 500;
 }
 </style>
-
