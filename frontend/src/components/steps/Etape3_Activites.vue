@@ -35,7 +35,7 @@
       <h3>Liste des activités proposées</h3>
       <div v-for="activity in filteredActivities" :key="activity.id!">
         <label :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
-          <input type="checkbox" :value="activity.name" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
+          <input type="checkbox" :value="activity.id" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
           <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
           <span v-if="activity.location"> (Lieu: {{ activity.location }})</span>

@@ -63,30 +63,15 @@ class AdhesionBase(BaseModel):
 
 
 class AdhesionCreate(AdhesionBase):
-    activites: Optional[List[str]] = [] # This will be handled in crud.py
+    activites: Optional[List[int]] = []
     pass
 
 
 class Adhesion(AdhesionBase):
-    """
-    Represents an adhesion entity with details about its identifier, code,
-    status, and payment method.
-
-    This class extends AdhesionBase and is used to manage adhesion
-    objects and their associated data.
-
-    :ivar id: Unique identifier of the adhesion entity.
-    :type id: int
-    :ivar code: Code representing the adhesion.
-    :type code: str
-    :ivar status: Status of the adhesion entity.
-    :type status: str
-    :ivar payment_method: Payment method associated with the adhesion. Optional.
-    :type payment_method: Optional[str]
-    """
     id: int
     code: str
     status: str
+    activites: List[int] = []
 
     class Config:
         from_attributes = True

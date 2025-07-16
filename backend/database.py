@@ -1,12 +1,13 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@localhost:5432/foyer_rural_db")
 engine = create_engine(DATABASE_URL)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 Base = declarative_base()
 
 class Adhesion(Base):
@@ -25,7 +26,11 @@ class Adhesion(Base):
     payment_method = Column(String)
     status = Column(String, default='pending')
 
-    adhesion_activities_link = relationship("AdhesionActivity", back_populates="adhesion")
+    adhesion_activities_link = relationship("AdhesionActivity", back_populates="adhesion", cascade="all, delete-orphan")
+    activities = association_proxy(
+        "adhesion_activities_link", "activity",
+        creator=lambda activity_obj: AdhesionActivity(activity=activity_obj)
+    )
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -40,6 +45,7 @@ class Activity(Base):
     max_participants = Column(Integer, default=0)
 
     adhesions_link = relationship("AdhesionActivity", back_populates="activity")
+    adhesions = association_proxy("adhesions_link", "adhesion")
 
 class AdhesionActivity(Base):
     __tablename__ = "adhesion_activities"

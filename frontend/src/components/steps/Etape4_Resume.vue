@@ -61,7 +61,7 @@ onMounted(async () => {
 });
 
 const selectedActivitiesDetails = computed<Activity[]>(() => {
-  return allActivities.value.filter((activity: Activity) => formData.activites.includes(activity.name));
+  return allActivities.value.filter((activity: Activity) => formData.activites.includes(activity.id!));
 });
 
 const getPrice = (activity: Activity) => {

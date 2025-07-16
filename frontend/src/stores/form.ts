@@ -12,7 +12,7 @@ export const useFormStore = defineStore('form', {
       nom_rue: '',
       code_postal: '',
       ville: '',
-      activites: [] as string[],
+      activites: [] as number[],
       adhesion_amount: null as number | null,
       adhesion_selected: false,
       code: null as string | null,
