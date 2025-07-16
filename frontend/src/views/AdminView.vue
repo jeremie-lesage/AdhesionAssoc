@@ -34,10 +34,16 @@
         <td>{{ getActivityNames(adhesion.activites) }}</td>
         <td>{{ calculateTotalCost(adhesion) }}€</td>
         <td>{{ adhesion.status }}</td>
-        <td>
-          <button @click="editAdhesion(adhesion.code)">Corriger</button>
+        <td class="actions-cell">
+          <button class="edit-button" @click="editAdhesion(adhesion.code)">Corriger</button>
           <button v-if="adhesion.status === 'pending'" class="validate-button" @click="validateAdhesion(adhesion.code)">
             Valider
+          </button>
+          <button v-if="adhesion.status === 'pending'" class="pay-button" @click="updatePayment(adhesion.code, 'virement')">
+            Payer Virement
+          </button>
+          <button v-if="adhesion.status === 'pending'" class="pay-button" @click="updatePayment(adhesion.code, 'cheque')">
+            Payer Chèque
           </button>
           <button class="receipt-button" @click="generateReceiptPdf(adhesion)">Reçu</button>
         </td>
@@ -158,6 +164,17 @@ const editAdhesion = async (code: string) => {
     router.push('/adhesion'); // Redirige vers la page du formulaire
   } catch (err: any) {
     alert(`Impossible de charger le formulaire pour le code ${code}: ${err.message}`);
+  }
+};
+
+const updatePayment = async (code: string, method: 'virement' | 'cheque') => {
+  if (!confirm(`Confirmez-vous le paiement par ${method} pour cette adhésion ?`)) return;
+  try {
+    await api.put(`/api/adhesions/${code}/pay`, { payment_method: method });
+    alert('Paiement enregistré avec succès !');
+    fetchAdhesions(); // Recharger la liste
+  } catch (err: any) {
+    alert(`Erreur lors de l'enregistrement du paiement: ${err.response?.data?.detail || err.message}`);
   }
 };
 
@@ -339,18 +356,50 @@ th {
   background-color: #f2f2f2;
 }
 
+.actions-cell button {
+  padding: 3px 8px;
+  font-size: 12px;
+  margin: 2px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.actions-cell button:hover {
+  opacity: 0.9;
+}
+
+.edit-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+.edit-button:hover {
+    background-color: #5a6268;
+}
+
 .validate-button {
   background-color: #28a745;
-  margin-left: 10px;
+  color: white;
 }
 
 .validate-button:hover {
   background-color: #218838;
 }
 
+.pay-button {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.pay-button:hover {
+  background-color: #e0a800;
+}
+
 .receipt-button {
   background-color: #007bff;
-  margin-left: 10px;
+  color: white;
 }
 
 .receipt-button:hover {

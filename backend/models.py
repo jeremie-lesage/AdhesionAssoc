@@ -77,6 +77,10 @@ class Adhesion(AdhesionBase):
         from_attributes = True
 
 
+class AdhesionPaymentUpdate(BaseModel):
+    payment_method: str
+
+
 # Pydantic models for Activity
 class ActivityBase(BaseModel):
     """

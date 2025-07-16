@@ -23,7 +23,7 @@ export interface Adhesion {
   ville: string;
   adhesion_amount: number;
   activites: string[];
-  payment_method: string;
+  payment_method?: string;
   status: string;
 }
 

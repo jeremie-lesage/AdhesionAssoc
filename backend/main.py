@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from models import (
     Adhesion, AdhesionCreate, Activity, ActivityCreate,
-    AdminUser, AdminUserCreate, AdminUserOut
+    AdminUser, AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -94,6 +94,14 @@ def validate_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = crud.validate_adhesion(db, code)
     if adhesion is None:
         raise HTTPException(status_code=404, detail="Adhesion not found or already validated")
+    return adhesion
+
+
+@app.put("/api/adhesions/{code}/pay", response_model=Adhesion, dependencies=[Depends(get_current_admin)])
+def pay_adhesion(code: str, payment_update: AdhesionPaymentUpdate, db: Session = Depends(get_db)):
+    adhesion = crud.update_adhesion_payment(db, code, payment_update.payment_method)
+    if adhesion is None:
+        raise HTTPException(status_code=404, detail="Adhesion not found")
     return adhesion
 
 

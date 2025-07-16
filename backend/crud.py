@@ -69,6 +69,20 @@ def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion]:
     return response_model
 
 
+def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Optional[PydanticAdhesion]:
+    adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+    if adhesion is None:
+        return None
+    adhesion.status = 'paid'
+    adhesion.payment_method = payment_method
+    db.commit()
+    db.refresh(adhesion)
+
+    response_model = PydanticAdhesion.model_validate(adhesion)
+    response_model.activites = [activity.id for activity in adhesion.activities]
+    return response_model
+
+
 def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optional[PydanticAdhesion]:
     db_adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
     if db_adhesion is None:
