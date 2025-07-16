@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 from datetime import datetime
 
 import crud
+from config import settings
 
 app = FastAPI()
 
@@ -33,7 +34,7 @@ templates = Jinja2Templates(directory="templates")
 def startup_event():
     create_tables()
     # Check if there is at least one admin user
-    db = next(get_db()) # Get a session for startup event
+    db = next(get_db())  # Get a session for startup event
     if not crud.get_admins(db):
         # If not, create a default admin user
         username = "admin"
@@ -59,6 +60,15 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
+
+
+@app.get("/api/config")
+def get_config():
+    return {
+        "iban": settings.IBAN,
+        "bic": settings.BIC,
+        "bank": settings.BANK
+    }
 
 
 # Admin login endpoint
@@ -210,7 +220,7 @@ def create_admin(admin: AdminUserCreate, db: Session = Depends(get_db)):
     if db_admin:
         raise HTTPException(status_code=400, detail="Username already registered")
     hashed_password = get_password_hash(admin.password)
-    admin.password = hashed_password # Update password to hashed version before passing to crud
+    admin.password = hashed_password  # Update password to hashed version before passing to crud
     return crud.create_admin(db, admin)
 
 
@@ -220,7 +230,7 @@ def update_admin(admin_id: int, admin: AdminUserCreate, db: Session = Depends(ge
     if not db_admin:
         raise HTTPException(status_code=404, detail="Admin not found")
     hashed_password = get_password_hash(admin.password)
-    admin.password = hashed_password # Update password to hashed version before passing to crud
+    admin.password = hashed_password  # Update password to hashed version before passing to crud
     return crud.update_admin(db, admin_id, admin)
 
 

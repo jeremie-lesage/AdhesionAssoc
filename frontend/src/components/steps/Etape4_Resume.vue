@@ -27,7 +27,9 @@
           <li>Soit 2 chèques de  {{ totalCost /2 }} € (Encaissement en Octobre et Février)</li>
         </ul>
         <h4>Par virement</h4>
-        <pre>IBAN: XXXXXX</pre>
+        <pre>{{ bank }}</pre>
+        <pre>IBAN: {{ iban }}</pre>
+        <pre>BIC: {{ bic }}</pre>
         <b>Pensez à mettre le nom de l'adhérant dans l'objet du virement.</b>
       </div>
     </div>
@@ -55,13 +57,21 @@ const router = useRouter();
 const allActivities = ref<Activity[]>([]);
 const isModalVisible = ref(false);
 const isUpdate = ref(false);
+const iban = ref('');
+const bic = ref('');
+const bank = ref('');
 
 onMounted(async () => {
   try {
-    const response = await api.get('/api/activities');
-    allActivities.value = response.data;
+    const activitiesResponse = await api.get('/api/activities');
+    allActivities.value = activitiesResponse.data;
+
+    const configResponse = await api.get('/api/config');
+    iban.value = configResponse.data.iban;
+    bic.value = configResponse.data.bic;
+    bank.value = configResponse.data.bank;
   } catch (error) {
-    console.error("Erreur lors du chargement des activités:", error);
+    console.error("Erreur lors du chargement des données:", error);
   }
 });
 
