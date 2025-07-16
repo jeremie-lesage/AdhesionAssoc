@@ -11,6 +11,12 @@
           </RouterLink>
         </li>
         <li>
+          <RouterLink to="/admin/contacts" class="nav-link">
+            <span class="icon">📧</span>
+            <span>Gérer les Demandes par Contact</span>
+          </RouterLink>
+        </li>
+        <li>
           <RouterLink to="/admin/activities" class="nav-link">
             <span class="icon">🤸</span>
             <span>Gérer les Activités</span>

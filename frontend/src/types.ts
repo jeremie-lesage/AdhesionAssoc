@@ -38,3 +38,14 @@ export interface AdminUserCreate {
   username: string;
   password?: string;
 }
+
+export interface ContactStatus {
+  email: string;
+  status: string;
+}
+
+export interface FamilyDetails {
+  email: string;
+  adherents: Adhesion[];
+  total_due: number;
+}

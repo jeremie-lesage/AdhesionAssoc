@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AdminUser, AdminUserCreate, Activity, Adhesion, AdhesionCreate } from './types';
+import type { AdminUser, AdminUserCreate, Activity, Adhesion, AdhesionCreate, ContactStatus, FamilyDetails } from './types';
 
 const backendUrl = window.BACKEND_URL || 'http://localhost:5173';
 
@@ -121,6 +121,16 @@ export const getAdherentsByActivity = async (activityId: number): Promise<Adhesi
 
 export const deleteAdhesion = async (code: string): Promise<void> => {
     await api.delete(`/api/adhesions/${code}`);
+};
+
+export const getContacts = async (): Promise<ContactStatus[]> => {
+    const response = await api.get('/api/admin/contacts');
+    return response.data;
+};
+
+export const getFamilyDetails = async (email: string): Promise<FamilyDetails> => {
+    const response = await api.get(`/api/admin/contacts/${email}`);
+    return response.data;
 };
 
 export default api;

@@ -5,10 +5,12 @@ import os
 import secrets
 import string
 from sqlalchemy.orm import Session
+from typing import List
 
-from models import (
+from schemas import (
     AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
-    AdminUserSchema, AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate
+    AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate,
+    ContactStatus, FamilyDetails
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -226,3 +228,16 @@ def update_admin(admin_id: int, admin: AdminUserCreate, db: Session = Depends(ge
 def delete_admin(admin_id: int, db: Session = Depends(get_db)):
     if not crud.delete_admin(db, admin_id):
         raise HTTPException(status_code=404, detail="Admin not found")
+
+
+@app.get("/api/admin/contacts", response_model=List[ContactStatus], dependencies=[Depends(get_current_admin)])
+def get_contacts(db: Session = Depends(get_db)):
+    return crud.get_contacts_with_status(db)
+
+
+@app.get("/api/admin/contacts/{email}", response_model=FamilyDetails, dependencies=[Depends(get_current_admin)])
+def get_family_details(email: str, db: Session = Depends(get_db)):
+    details = crud.get_family_details_by_email(db, email)
+    if not details:
+        raise HTTPException(status_code=404, detail="No adhesions found for this email")
+    return details

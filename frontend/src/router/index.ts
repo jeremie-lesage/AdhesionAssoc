@@ -64,6 +64,19 @@ const router = createRouter({
       name: 'admin-accounts',
       component: () => import('../views/AdminAccounts.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/contacts',
+      name: 'ContactsList',
+      component: () => import('../views/admin/ContactsListView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/contacts/:email',
+      name: 'FamilyDetails',
+      component: () => import('../views/admin/FamilyDetailsView.vue'),
+      meta: { requiresAuth: true },
+      props: true
     }
   ]
 })

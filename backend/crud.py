@@ -1,13 +1,14 @@
 import string
 import random
+from collections import defaultdict
 from typing import List, Optional
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 
 from models import Adhesion, Activity, AdminUser as Admin
-from models import (
+from schemas import (
     AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUserSchema,
-    AdhesionSchema, ActivitySchema, AdminUserOut
+    AdhesionSchema, ActivitySchema, AdminUserOut, ContactStatus, FamilyDetails
 )
 
 
@@ -212,3 +213,51 @@ def delete_admin(db: Session, admin_id: int) -> bool:
     db.delete(admin)
     db.commit()
     return True
+
+
+def get_contacts_with_status(db: Session) -> List[ContactStatus]:
+    adhesions = db.query(Adhesion).all()
+    contacts = defaultdict(list)
+    for adhesion in adhesions:
+        contacts[adhesion.email].append(adhesion.status)
+
+    contact_statuses = []
+    for email, statuses in contacts.items():
+        if "pending" in statuses:
+            status = "pending"
+        elif all(s == "paid" for s in statuses):
+            status = "payé"
+        else:
+            status = "Incomplet"
+        contact_statuses.append(ContactStatus(email=email, status=status))
+
+    return contact_statuses
+
+
+def _calculate_adhesion_cost(adhesion: Adhesion) -> float:
+    total_cost = adhesion.adhesion_amount or 0
+    for activity in adhesion.activities:
+        is_resident = adhesion.ville.lower() == 'fauverney'
+        price = activity.resident_price if is_resident else activity.external_price
+        total_cost += price or 0
+    return total_cost
+
+
+def get_family_details_by_email(db: Session, email: str) -> Optional[FamilyDetails]:
+    adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.email == email).all()
+
+    if not adhesions:
+        return None
+
+    total_due = 0
+    adhesion_schemas = []
+
+    for adhesion in adhesions:
+        adhesion_schemas.append(AdhesionSchema.model_validate(adhesion))
+        total_due += _calculate_adhesion_cost(adhesion)
+
+    return FamilyDetails(
+        email=email,
+        adherents=adhesion_schemas,
+        total_due=total_due
+    )
