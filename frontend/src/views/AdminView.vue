@@ -247,7 +247,7 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9;">
   <p style="margin: 5px 0;"><strong>Adhérent:</strong> ${adhesion.prenom} ${adhesion.nom}</p>
   <p style="margin: 5px 0;"><strong>Email:</strong> ${adhesion.email}</p>
-  <p style="margin: 5px 0;"><strong>Adresse:</strong> ${adhesion.numero_rue}, ${adhesion.nom_rue}</p>
+  <p style="margin: 5px 0;"><strong>Adresse:</strong> ${adhesion.numero_rue} ${adhesion.nom_rue}</p>
   <p style="margin: 5px 0;">${adhesion.code_postal} ${adhesion.ville}</p>
   </div>
 
@@ -260,32 +260,32 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   </thead>
   <tbody>
   <tr>
-  <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
-  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
+  <td style="padding: 8px; border: 1px solid #202020;">Adhésion</td>
+  <td style="padding: 8px; border: 1px solid #202020; text-align: right;">${adhesion.adhesion_amount} €</td>
   </tr>
   ${adhesion.activities.map((activity: Activity) => {
-  if (activity) {
-  return `       <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activity.name  }</td>
-                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${ getPrice(activity, adhesion.ville)  }</td>
+    if (activity) {
+      return `       <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${activity.name}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${getPrice(activity, adhesion.ville)} €</td>
                 </tr>`;
-  } else {
-  return `      <tr>
+    } else {
+      return `      <tr>
                   <td style="padding: 8px; border: 1px solid #ddd;">Activité: (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
                 </tr>`;
-  }
+    }
   }).join('')}
   <tr style="background-color: #f2f2f2;">
   <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">TOTAL PAYÉ</td>
-  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${calculateTotalCost(adhesion)}</td>
+  <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${calculateTotalCost(adhesion)} €</td>
   </tr>
   </tbody>
   </table>
 
   <div style="text-align: center; font-size: 8pt; color: #777;">
   <p>Foyer Rural de Fauverney - Association loi 1901</p>
-  <p>Contact: contact@foyer-rural-fauverney.fr</p>
+  <p>Contact: fauverneyfoyer@gmail.com</p>
   <p>Merci pour votre adhésion !</p>
   </div>
   </div>
