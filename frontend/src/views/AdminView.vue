@@ -5,12 +5,20 @@
     <RouterLink class="button" to="/admin/adherents-by-activity">Adhérents par Activité</RouterLink>
     <RouterLink class="button" to="/admin/accounts">Gérer les comptes</RouterLink>
     <button @click="handleLogout" class="button">Déconnexion</button>
-    <button :disabled="!adhesions.length" class="button export-button" @click="exportToCsv">Exporter toutes les
-      adhésions en CSV
+    <button :disabled="!filteredAdhesions.length" class="button export-button" @click="exportToCsv">Exporter les adhésions filtrées en CSV
     </button>
+    <div>
+      <label for="status-filter">Filtrer par statut:</label>
+      <select id="status-filter" v-model="selectedStatus">
+        <option value="">Tous</option>
+        <option value="pending">En attente</option>
+        <option value="validated">Validé</option>
+        <option value="paid">Payé</option>
+      </select>
+    </div>
     <p v-if="loading">Chargement des adhésions...</p>
     <p v-if="error">Erreur lors du chargement des adhésions: {{ error }}</p>
-    <table v-if="adhesions.length">
+    <table v-if="filteredAdhesions.length">
       <thead>
       <tr>
         <th>Code</th>
@@ -25,7 +33,7 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="adhesion in adhesions" :key="adhesion.id!">
+      <tr v-for="adhesion in filteredAdhesions" :key="adhesion.id!">
         <td>{{ adhesion.code }}</td>
         <td :title="adhesion.email">{{ truncateEmail(adhesion.email) }}</td>
         <td>{{ adhesion.prenom }} {{ adhesion.nom }}</td>
@@ -76,6 +84,14 @@ const error = ref<string | null>(null);
 const router = useRouter();
 const formStore = useFormStore();
 const allActivities = ref<Activity[]>([]);
+const selectedStatus = ref('');
+
+const filteredAdhesions = computed(() => {
+  if (!selectedStatus.value) {
+    return adhesions.value;
+  }
+  return adhesions.value.filter(adhesion => adhesion.status === selectedStatus.value);
+});
 
 const truncateEmail = (email: string, maxLength = 15): string => {
   if (email.length <= maxLength) {
@@ -189,13 +205,13 @@ const validateAdhesion = async (code: string) => {
 };
 
 const exportToCsv = () => {
-  if (!adhesions.value.length) return;
+  if (!filteredAdhesions.value.length) return;
 
   const headers = [
     "Code", "Email", "Nom complet", "Numéro Rue", "Nom Rue",
     "Code Postal", "Ville", "Montant Adhésion", "Activités", "Statut", "Coût Total"
   ];
-  const rows = adhesions.value.map(adhesion => [
+  const rows = filteredAdhesions.value.map(adhesion => [
     adhesion.code,
     adhesion.email,
     `${adhesion.prenom} ${adhesion.nom}`,
@@ -438,3 +454,4 @@ th {
   background-color: #218838;
 }
 </style>
+
