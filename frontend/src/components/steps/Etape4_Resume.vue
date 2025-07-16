@@ -22,7 +22,7 @@
       <div class="payment-section">
         <h3>Moyens de Paiements</h3>
         <h4>Par chèque</h4>
-        <ul>
+        <ul style="padding-left: 1rem;">
           <li>Soit 1 chèque de {{ totalCost }} € (Encaissement en Octobre)</li>
           <li>Soit 2 chèques de  {{ totalCost /2 }} € (Encaissement en Octobre et Novembre)</li>
         </ul>

@@ -38,8 +38,9 @@
           <input type="checkbox" :value="activity.id" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
           <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
-          <span v-if="activity.location"> (Lieu: {{ activity.location }})</span>
-          <span v-if="activity.max_participants > 0"> (Places restantes: {{ activity.max_participants - activity.current_participants }})</span>
+          <br/>
+          <span v-if="activity.location" style="margin-left: 1.5rem"> (Lieu: {{ activity.location }})</span>
+          <span v-if="activity.max_participants > 0"> (Places restantes: {{ activity.max_participants - (activity.current_participants || 0) }})</span>
           <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants" style="color: red;"> (Complet)</span>
         </label>
       </div>

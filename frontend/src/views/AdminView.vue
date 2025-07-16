@@ -15,9 +15,8 @@
       <tr>
         <th>Code</th>
         <th>Email</th>
-        <th>Nom</th>
-        <th>Prénom</th>
-        <th>Adresse</th>
+        <th>Nom complet</th>
+        <th>Ville</th>
         <th>Montant Adhésion</th>
         <th>Activités</th>
         <th>Coût Total</th>
@@ -28,12 +27,11 @@
       <tbody>
       <tr v-for="adhesion in adhesions" :key="adhesion.id!">
         <td>{{ adhesion.code }}</td>
-        <td>{{ adhesion.email }}</td>
-        <td>{{ adhesion.nom }}</td>
-        <td>{{ adhesion.prenom }}</td>
-        <td>{{ adhesion.numero_rue }}, {{ adhesion.nom_rue }} <br/> {{ adhesion.code_postal }} {{ adhesion.ville }}</td>
+        <td :title="adhesion.email">{{ truncateEmail(adhesion.email) }}</td>
+        <td>{{ adhesion.prenom }} {{ adhesion.nom }}</td>
+        <td>{{ adhesion.code_postal }} {{ adhesion.ville }}</td>
         <td>{{ adhesion.adhesion_amount }}€</td>
-        <td>{{ adhesion.activites ? adhesion.activites.join(', ') : 'Aucune' }}</td>
+        <td>{{ getActivityNames(adhesion.activites) }}</td>
         <td>{{ calculateTotalCost(adhesion) }}€</td>
         <td>{{ adhesion.status }}</td>
         <td>
@@ -72,6 +70,13 @@ const error = ref<string | null>(null);
 const router = useRouter();
 const formStore = useFormStore();
 const allActivities = ref<Activity[]>([]);
+
+const truncateEmail = (email: string, maxLength = 15): string => {
+  if (email.length <= maxLength) {
+    return email;
+  }
+  return email.slice(0, maxLength) + '...';
+};
 
 const handleLogout = () => {
   logout();
@@ -120,14 +125,24 @@ const getPrice = (activity: Activity, city: string) => {
 const calculateTotalCost = (adhesion: Adhesion) => {
   let total = adhesion.adhesion_amount || 0;
   if (adhesion.activites && allActivities.value.length > 0) {
-    adhesion.activites.forEach(adhesionActivityName => {
-      const activity = allActivities.value.find(act => act.name === adhesionActivityName);
+    adhesion.activites.forEach(activityId => {
+      const activity = allActivities.value.find(act => act.id === activityId);
       if (activity) {
         total += getPrice(activity, adhesion.ville) || 0;
       }
     });
   }
   return total;
+};
+
+const getActivityNames = (activityIds: number[]) => {
+  if (!activityIds || activityIds.length === 0) {
+    return 'Aucune';
+  }
+  return activityIds.map(id => {
+    const activity = allActivities.value.find(act => act.id === id);
+    return activity ? activity.name : `ID ${id} inconnu`;
+  }).join(', ');
 };
 
 onMounted(() => {
@@ -161,20 +176,19 @@ const exportToCsv = () => {
   if (!adhesions.value.length) return;
 
   const headers = [
-    "Code", "Email", "Nom", "Prénom", "Numéro Rue", "Nom Rue",
+    "Code", "Email", "Nom complet", "Numéro Rue", "Nom Rue",
     "Code Postal", "Ville", "Montant Adhésion", "Activités", "Statut", "Coût Total"
   ];
   const rows = adhesions.value.map(adhesion => [
     adhesion.code,
     adhesion.email,
-    adhesion.nom,
-    adhesion.prenom,
+    `${adhesion.prenom} ${adhesion.nom}`,
     adhesion.numero_rue,
     adhesion.nom_rue,
     adhesion.code_postal,
     adhesion.ville,
     adhesion.adhesion_amount,
-    adhesion.activites ? adhesion.activites.join(', ') : 'Aucune',
+    getActivityNames(adhesion.activites),
     adhesion.status,
     calculateTotalCost(adhesion)
   ]);
@@ -233,8 +247,8 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
   </tr>
-  ${adhesion.activites.map((activityName: string) => {
-  const activity = allActivities.value.find((act: Activity) => act.name === activityName);
+  ${adhesion.activites.map((activityId: number) => {
+  const activity = allActivities.value.find((act: Activity) => act.id === activityId);
   if (activity) {
   return `       <tr>
                   <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activity.name  }</td>
@@ -242,7 +256,7 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
                 </tr>`;
   } else {
   return `      <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activityName } (Non trouvée)</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ID ${ activityId } (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
                 </tr>`;
   }
