@@ -24,7 +24,7 @@
         <h4>Par chèque</h4>
         <ul style="padding-left: 1rem;">
           <li>Soit 1 chèque de {{ totalCost }} € (Encaissement en Octobre)</li>
-          <li>Soit 2 chèques de  {{ totalCost /2 }} € (Encaissement en Octobre et Novembre)</li>
+          <li>Soit 2 chèques de  {{ totalCost /2 }} € (Encaissement en Octobre et Février)</li>
         </ul>
         <h4>Par virement</h4>
         <pre>IBAN: XXXXXX</pre>
