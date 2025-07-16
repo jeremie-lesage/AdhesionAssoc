@@ -46,6 +46,8 @@ def create_adhesion(db: Session, adhesion: AdhesionCreate) -> PydanticAdhesion:
     return response_model
 
 
+from email_service import send_validation_email
+
 def get_adhesion_by_code(db: Session, code: str) -> Optional[PydanticAdhesion]:
     adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
     if adhesion is None:
@@ -56,13 +58,36 @@ def get_adhesion_by_code(db: Session, code: str) -> Optional[PydanticAdhesion]:
     return response_model
 
 
-def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion]:
+async def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion]:
     adhesion = db.query(Adhesion).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
     if adhesion is None:
         return None
     adhesion.status = 'validated'
+    
+    total_cost = adhesion.adhesion_amount or 0
+    activities_details = []
+    for activity in adhesion.activities:
+        is_resident = adhesion.ville.lower() == 'fauverney'
+        price = activity.resident_price if is_resident else activity.external_price
+        total_cost += price or 0
+        activities_details.append({"name": activity.name, "price": price})
+
     db.commit()
     db.refresh(adhesion)
+
+    email_body = {
+        "prenom": adhesion.prenom,
+        "nom": adhesion.nom,
+        "code": adhesion.code,
+        "adhesion_amount": adhesion.adhesion_amount,
+        "activities": activities_details,
+        "total_cost": total_cost,
+    }
+    await send_validation_email(
+        email_to=adhesion.email,
+        subject="Confirmation de votre adhésion au Foyer Rural",
+        body=email_body
+    )
 
     response_model = PydanticAdhesion.model_validate(adhesion)
     response_model.activites = [activity.id for activity in adhesion.activities]

@@ -90,8 +90,8 @@ def read_adhesion(code: str, db: Session = Depends(get_db)):
 
 
 @app.put("/api/adhesions/{code}/validate", response_model=Adhesion, dependencies=[Depends(get_current_admin)])
-def validate_adhesion(code: str, db: Session = Depends(get_db)):
-    adhesion = crud.validate_adhesion(db, code)
+async def validate_adhesion(code: str, db: Session = Depends(get_db)):
+    adhesion = await crud.validate_adhesion(db, code)
     if adhesion is None:
         raise HTTPException(status_code=404, detail="Adhesion not found or already validated")
     return adhesion

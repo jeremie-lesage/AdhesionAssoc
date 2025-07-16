@@ -179,10 +179,10 @@ const updatePayment = async (code: string, method: 'virement' | 'cheque') => {
 };
 
 const validateAdhesion = async (code: string) => {
-  if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ?')) return;
+  if (!confirm('Êtes-vous sûr de vouloir valider cette adhésion ? Un email de confirmation sera envoyé.')) return;
   try {
     await api.put(`/api/adhesions/${code}/validate`);
-    alert('Adhésion validée avec succès !');
+    alert('Adhésion validée et email de confirmation envoyé !');
     fetchAdhesions(); // Recharger la liste
   } catch (err: any) {
     alert(`Erreur lors de la validation de l'adhésion: ${err.response?.data?.detail || err.message}`);

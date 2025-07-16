@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmation de votre adhésion</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .total { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Bonjour {{ prenom }} {{ nom }},</h1>
+    <p>Votre adhésion au Foyer Rural de Fauverney a été validée avec succès !</p>
+    <p>Votre code d'adhérent est : <strong>{{ code }}</strong></p>
+    
+    <h2>Récapitulatif de votre adhésion</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Adhésion</td>
+                <td>{{ adhesion_amount }}€</td>
+            </tr>
+            {% for activity in activities %}
+            <tr>
+                <td>Activité : {{ activity.name }}</td>
+                <td>{{ activity.price }}€</td>
+            </tr>
+            {% endfor %}
+            <tr class="total">
+                <td>Total</td>
+                <td>{{ total_cost }}€</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>Merci de votre confiance.</p>
+    <p>L'équipe du Foyer Rural de Fauverney</p>
+</body>
+</html>
