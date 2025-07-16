@@ -10,7 +10,7 @@ from typing import List
 from schemas import (
     AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
     AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate,
-    ContactStatus, FamilyDetails
+    ContactStatus, FamilyDetails, PublicSettings
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -62,13 +62,13 @@ app.add_middleware(
 )
 
 
-@app.get("/api/config")
+@app.get("/api/config", response_model=PublicSettings)
 def get_config():
-    return {
-        "iban": settings.IBAN,
-        "bic": settings.BIC,
-        "bank": settings.BANK
-    }
+    return PublicSettings(
+        iban=settings.IBAN,
+        bic=settings.BIC,
+        bank=settings.BANK
+    )
 
 
 # Admin login endpoint

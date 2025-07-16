@@ -181,3 +181,9 @@ class FamilyDetails(BaseModel):
 
 
 AdhesionSchema.model_rebuild()
+
+
+class PublicSettings(BaseModel):
+    iban: str
+    bic: str
+    bank: str

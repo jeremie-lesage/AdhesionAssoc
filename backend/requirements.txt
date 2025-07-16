@@ -6,4 +6,4 @@ bcrypt==4.0.1
 pydantic[email]==2.11.7
 psycopg2-binary
 sqlalchemy
-fastapi-mail
+sib-api-v3-sdk
