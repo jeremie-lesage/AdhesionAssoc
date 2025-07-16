@@ -1,6 +1,6 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pathlib import Path
-from backend.config import settings
+from config import settings
 
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
