@@ -7,8 +7,8 @@ import string
 from sqlalchemy.orm import Session
 
 from models import (
-    Adhesion, AdhesionCreate, Activity, ActivityCreate,
-    AdminUser, AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate
+    AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
+    AdminUserSchema, AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -67,13 +67,13 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# Adhesion Endpoints
-@app.get("/api/adhesions", response_model=list[Adhesion], dependencies=[Depends(get_current_admin)])
+# AdhesionSchema Endpoints
+@app.get("/api/adhesions", response_model=list[AdhesionSchema], dependencies=[Depends(get_current_admin)])
 def list_adhesions(db: Session = Depends(get_db)):
     return crud.get_adhesions(db)
 
 
-@app.post("/api/adhesions", response_model=Adhesion, dependencies=[Depends(rate_limit)])
+@app.post("/api/adhesions", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
 def create_adhesion(adhesion: AdhesionCreate, db: Session = Depends(get_db)):
     try:
         return crud.create_adhesion(db, adhesion)
@@ -81,36 +81,36 @@ def create_adhesion(adhesion: AdhesionCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/api/adhesions/{code}", response_model=Adhesion, dependencies=[Depends(rate_limit)])
+@app.get("/api/adhesions/{code}", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
 def read_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = crud.get_adhesion_by_code(db, code)
     if adhesion is None:
-        raise HTTPException(status_code=404, detail="Adhesion not found")
+        raise HTTPException(status_code=404, detail="AdhesionSchema not found")
     return adhesion
 
 
-@app.put("/api/adhesions/{code}/validate", response_model=Adhesion, dependencies=[Depends(get_current_admin)])
+@app.put("/api/adhesions/{code}/validate", response_model=AdhesionSchema, dependencies=[Depends(get_current_admin)])
 async def validate_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = await crud.validate_adhesion(db, code)
     if adhesion is None:
-        raise HTTPException(status_code=404, detail="Adhesion not found or already validated")
+        raise HTTPException(status_code=404, detail="AdhesionSchema not found or already validated")
     return adhesion
 
 
-@app.put("/api/adhesions/{code}/pay", response_model=Adhesion, dependencies=[Depends(get_current_admin)])
+@app.put("/api/adhesions/{code}/pay", response_model=AdhesionSchema, dependencies=[Depends(get_current_admin)])
 def pay_adhesion(code: str, payment_update: AdhesionPaymentUpdate, db: Session = Depends(get_db)):
     adhesion = crud.update_adhesion_payment(db, code, payment_update.payment_method)
     if adhesion is None:
-        raise HTTPException(status_code=404, detail="Adhesion not found")
+        raise HTTPException(status_code=404, detail="AdhesionSchema not found")
     return adhesion
 
 
-@app.put("/api/adhesions/{code}", response_model=Adhesion, dependencies=[Depends(rate_limit)])
+@app.put("/api/adhesions/{code}", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
 def update_adhesion(code: str, adhesion: AdhesionCreate, db: Session = Depends(get_db)):
     try:
         updated_adhesion = crud.update_adhesion(db, code, adhesion)
         if updated_adhesion is None:
-            raise HTTPException(status_code=404, detail="Adhesion not found")
+            raise HTTPException(status_code=404, detail="AdhesionSchema not found")
         return updated_adhesion
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -118,7 +118,7 @@ def update_adhesion(code: str, adhesion: AdhesionCreate, db: Session = Depends(g
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 
-@app.get("/api/activities/{activity_id}/adherents", response_model=list[Adhesion],
+@app.get("/api/activities/{activity_id}/adherents", response_model=list[AdhesionSchema],
          dependencies=[Depends(get_current_admin)])
 def get_adherents_by_activity(activity_id: int, db: Session = Depends(get_db)):
     try:
@@ -127,21 +127,21 @@ def get_adherents_by_activity(activity_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# Activity Endpoints
-@app.put("/api/activities/{activity_id}", response_model=Activity, dependencies=[Depends(get_current_admin)])
+# ActivitySchema Endpoints
+@app.put("/api/activities/{activity_id}", response_model=ActivitySchema, dependencies=[Depends(get_current_admin)])
 def update_activity(activity_id: int, activity: ActivityCreate, db: Session = Depends(get_db)):
     updated_activity = crud.update_activity(db, activity_id, activity)
     if updated_activity is None:
-        raise HTTPException(status_code=404, detail="Activity not found")
+        raise HTTPException(status_code=404, detail="ActivitySchema not found")
     return updated_activity
 
 
-@app.get("/api/activities", response_model=list[Activity])
+@app.get("/api/activities", response_model=list[ActivitySchema])
 def list_activities(db: Session = Depends(get_db)):
     return crud.get_activities(db)
 
 
-@app.post("/api/activities", response_model=Activity, status_code=201, dependencies=[Depends(get_current_admin)])
+@app.post("/api/activities", response_model=ActivitySchema, status_code=201, dependencies=[Depends(get_current_admin)])
 def create_activity(activity: ActivityCreate, db: Session = Depends(get_db)):
     try:
         return crud.create_activity(db, activity)
@@ -152,7 +152,7 @@ def create_activity(activity: ActivityCreate, db: Session = Depends(get_db)):
 @app.delete("/api/activities/{activity_id}", status_code=204, dependencies=[Depends(get_current_admin)])
 def delete_activity(activity_id: int, db: Session = Depends(get_db)):
     if not crud.delete_activity(db, activity_id):
-        raise HTTPException(status_code=404, detail="Activity not found")
+        raise HTTPException(status_code=404, detail="ActivitySchema not found")
 
 
 # Admin Endpoints

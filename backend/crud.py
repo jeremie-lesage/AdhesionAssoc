@@ -1,11 +1,14 @@
 import string
 import random
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 
-from database import Adhesion, Activity, AdhesionActivity, Admin
-from models import AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUser, Adhesion as PydanticAdhesion, Activity as PydanticActivity, AdminUserOut
+from models import Adhesion, Activity, AdminUser as Admin
+from models import (
+    AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUserSchema,
+    AdhesionSchema, ActivitySchema, AdminUserOut
+)
 
 
 def generate_random_code(length=12):
@@ -14,52 +17,40 @@ def generate_random_code(length=12):
 
 
 # Adhesion CRUD
-def get_adhesions(db: Session) -> List[PydanticAdhesion]:
-    adhesions = db.query(Adhesion).all()
-    result = []
-    for adhesion in adhesions:
-        adhesion_data = PydanticAdhesion.model_validate(adhesion)
-        adhesion_data.activites = [activity.id for activity in adhesion.activities]
-        result.append(adhesion_data)
-    return result
+def get_adhesions(db: Session) -> List[AdhesionSchema]:
+    adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).all()
+    return [AdhesionSchema.model_validate(adhesion) for adhesion in adhesions]
 
 
-def create_adhesion(db: Session, adhesion: AdhesionCreate) -> PydanticAdhesion:
-    adhesion_data = adhesion.model_dump(exclude={'activites'})
+def create_adhesion(db: Session, adhesion: AdhesionCreate) -> AdhesionSchema:
+    adhesion_data = adhesion.model_dump(exclude={'activities'})
     db_adhesion = Adhesion(**adhesion_data, code=generate_random_code())
 
-    if adhesion.activites:
-        for activity_id in adhesion.activites:
-            activity = db.query(Activity).filter(Activity.id == activity_id).first()
-            if activity:
-                current_participants = db.query(func.count(AdhesionActivity.adhesion_id)).filter(AdhesionActivity.activity_id == activity.id).scalar()
-                if activity.max_participants > 0 and current_participants >= activity.max_participants:
-                    raise ValueError(f"Activity '{activity.name}' has reached its maximum number of participants.")
-                db_adhesion.activities.append(activity)
+    if adhesion.activities:
+        activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
+        for activity in activities:
+            if activity.max_participants > 0 and len(activity.adhesions) >= activity.max_participants:
+                raise ValueError(f"Activity '{activity.name}' has reached its maximum number of participants.")
+            db_adhesion.activities.append(activity)
 
     db.add(db_adhesion)
     db.commit()
     db.refresh(db_adhesion)
 
-    response_model = PydanticAdhesion.model_validate(db_adhesion)
-    response_model.activites = [activity.id for activity in db_adhesion.activities]
-    return response_model
+    return AdhesionSchema.model_validate(db_adhesion)
 
 
 from email_service import send_validation_email
 
-def get_adhesion_by_code(db: Session, code: str) -> Optional[PydanticAdhesion]:
-    adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+def get_adhesion_by_code(db: Session, code: str) -> Optional[AdhesionSchema]:
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
-
-    response_model = PydanticAdhesion.model_validate(adhesion)
-    response_model.activites = [activity.id for activity in adhesion.activities]
-    return response_model
+    return AdhesionSchema.model_validate(adhesion)
 
 
-async def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion]:
-    adhesion = db.query(Adhesion).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
+async def validate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
     if adhesion is None:
         return None
     adhesion.status = 'validated'
@@ -89,12 +80,10 @@ async def validate_adhesion(db: Session, code: str) -> Optional[PydanticAdhesion
         body=email_body
     )
 
-    response_model = PydanticAdhesion.model_validate(adhesion)
-    response_model.activites = [activity.id for activity in adhesion.activities]
-    return response_model
+    return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Optional[PydanticAdhesion]:
+def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Optional[AdhesionSchema]:
     adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
@@ -103,65 +92,49 @@ def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Opti
     db.commit()
     db.refresh(adhesion)
 
-    response_model = PydanticAdhesion.model_validate(adhesion)
-    response_model.activites = [activity.id for activity in adhesion.activities]
-    return response_model
+    return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optional[PydanticAdhesion]:
-    db_adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
+def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optional[AdhesionSchema]:
+    db_adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if db_adhesion is None:
         return None
 
     if db_adhesion.status == 'validated':
         raise ValueError("Cannot update a validated adhesion")
 
-    update_data = adhesion.model_dump(exclude_unset=True, exclude={'activites'})
+    update_data = adhesion.model_dump(exclude_unset=True, exclude={'activities'})
     for key, value in update_data.items():
         setattr(db_adhesion, key, value)
 
-    db_adhesion.activities.clear()
-    if adhesion.activites:
-        for activity_id in adhesion.activites:
-            activity = db.query(Activity).filter(Activity.id == activity_id).first()
-            if activity:
+    if 'activities' in adhesion.model_dump_json():
+        db_adhesion.activities.clear()
+        if adhesion.activities:
+            activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
+            for activity in activities:
                 db_adhesion.activities.append(activity)
 
     db.commit()
     db.refresh(db_adhesion)
 
-    response_model = PydanticAdhesion.model_validate(db_adhesion)
-    response_model.activites = [activity.id for activity in db_adhesion.activities]
-    return response_model
+    return AdhesionSchema.model_validate(db_adhesion)
 
 
-def get_adherents_by_activity(db: Session, activity_id: int) -> List[PydanticAdhesion]:
-    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+def get_adherents_by_activity(db: Session, activity_id: int) -> List[AdhesionSchema]:
+    activity = db.query(Activity).options(selectinload(Activity.adhesions).selectinload(Adhesion.activities)).filter(Activity.id == activity_id).first()
     if activity is None:
         raise ValueError("Activity not found")
 
-    adhesions = activity.adhesions
-    result = []
-    for adhesion in adhesions:
-        adhesion_data = PydanticAdhesion.model_validate(adhesion)
-        adhesion_data.activites = [act.id for act in adhesion.activities]
-        result.append(adhesion_data)
-    return result
+    return [AdhesionSchema.model_validate(adhesion) for adhesion in activity.adhesions]
 
 
 # Activity CRUD
-def get_activities(db: Session) -> List[PydanticActivity]:
-    activities = db.query(Activity).all()
-    result = []
-    for activity in activities:
-        current_participants = db.query(func.count(AdhesionActivity.adhesion_id)).filter(AdhesionActivity.activity_id == activity.id).scalar()
-        activity_data = activity.__dict__
-        activity_data['current_participants'] = current_participants
-        result.append(PydanticActivity(**activity_data))
-    return result
+def get_activities(db: Session) -> List[ActivitySchema]:
+    activities = db.query(Activity).options(selectinload(Activity.adhesions)).all()
+    return [ActivitySchema.model_validate(activity) for activity in activities]
 
 
-def create_activity(db: Session, activity: ActivityCreate) -> PydanticActivity:
+def create_activity(db: Session, activity: ActivityCreate) -> ActivitySchema:
     db_activity = Activity(**activity.model_dump())
     db.add(db_activity)
     try:
@@ -170,10 +143,10 @@ def create_activity(db: Session, activity: ActivityCreate) -> PydanticActivity:
     except Exception:
         db.rollback()
         raise ValueError(f"Activity with name {activity.name} already exists")
-    return PydanticActivity(**db_activity.__dict__)
+    return ActivitySchema.model_validate(db_activity)
 
 
-def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> Optional[PydanticActivity]:
+def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> Optional[ActivitySchema]:
     db_activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if db_activity is None:
         return None
@@ -183,7 +156,7 @@ def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> 
 
     db.commit()
     db.refresh(db_activity)
-    return PydanticActivity(**db_activity.__dict__)
+    return ActivitySchema.model_validate(db_activity)
 
 
 def delete_activity(db: Session, activity_id: int) -> bool:
@@ -196,10 +169,10 @@ def delete_activity(db: Session, activity_id: int) -> bool:
 
 
 # Admin CRUD
-def get_admin(db: Session, admin_id: int) -> Optional[AdminUser]:
+def get_admin(db: Session, admin_id: int) -> Optional[AdminUserSchema]:
     return db.query(Admin).filter(Admin.id == admin_id).first()
 
-def get_admin_by_username(db: Session, username: str) -> Optional[AdminUser]:
+def get_admin_by_username(db: Session, username: str) -> Optional[AdminUserSchema]:
     return db.query(Admin).filter(Admin.username == username).first()
 
 def get_admins(db: Session) -> List[AdminUserOut]:

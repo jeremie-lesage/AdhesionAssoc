@@ -1,8 +1,68 @@
+from sqlalchemy import Column, Integer, String, Float, Boolean, Table, ForeignKey
+from sqlalchemy.orm import relationship, declarative_base
+
+# Pydantic model for admin login
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
+Base = declarative_base()
 
-# Pydantic model for admin login
+# Association Table for Adhesion and Activity
+adhesion_activity_association = Table(
+    'adhesion_activity', Base.metadata,
+    Column('adhesion_id', Integer, ForeignKey('adhesions.id')),
+    Column('activity_id', Integer, ForeignKey('activities.id'))
+)
+
+
+class Adhesion(Base):
+    __tablename__ = "adhesions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)
+    email = Column(String, index=True)
+    nom = Column(String)
+    prenom = Column(String)
+    date_naissance = Column(String)
+    numero_rue = Column(String)
+    nom_rue = Column(String)
+    code_postal = Column(String)
+    ville = Column(String)
+    status = Column(String, default="pending")  # pending, validated, paid
+    payment_method = Column(String, nullable=True)
+    adhesion_amount = Column(Float, nullable=True)
+
+    activities = relationship("Activity", secondary=adhesion_activity_association, back_populates="adhesions")
+
+
+class Activity(Base):
+    __tablename__ = "activities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String)
+    location = Column(String)
+    resident_price = Column(Float)
+    external_price = Column(Float)
+    is_child_activity = Column(Boolean, default=False)
+    is_adult_activity = Column(Boolean, default=False)
+    max_participants = Column(Integer, default=0)
+
+    adhesions = relationship("Adhesion", secondary=adhesion_activity_association, back_populates="activities")
+
+    @property
+    def current_participants(self):
+        return len(self.adhesions)
+
+
+class AdminUser(Base):
+    __tablename__ = "admins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+
+
 class AdminLogin(BaseModel):
     """
     Represents the data structure for an administrator's login credentials.
@@ -63,15 +123,15 @@ class AdhesionBase(BaseModel):
 
 
 class AdhesionCreate(AdhesionBase):
-    activites: Optional[List[int]] = []
+    activities: Optional[List[int]] = []
     pass
 
 
-class Adhesion(AdhesionBase):
+class AdhesionSchema(AdhesionBase):
     id: int
     code: str
     status: str
-    activites: List[int] = []
+    activities: List['ActivitySchema'] = []
 
     class Config:
         from_attributes = True
@@ -123,7 +183,7 @@ class ActivityCreate(ActivityBase):
     pass
 
 
-class Activity(ActivityBase):
+class ActivitySchema(ActivityBase):
     """
         Represents an activity with participation tracking.
 
@@ -140,6 +200,7 @@ class Activity(ActivityBase):
         :type current_participants: Optional[int]
     """
     id: int
+    current_participants: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -153,7 +214,7 @@ class AdminUserCreate(AdminUserBase):
     password: str
 
 
-class AdminUser(AdminUserBase):
+class AdminUserSchema(AdminUserBase):
     id: int
     hashed_password: str
 
@@ -166,3 +227,6 @@ class AdminUserOut(AdminUserBase):
 
     class Config:
         from_attributes = True
+
+
+AdhesionSchema.model_rebuild()

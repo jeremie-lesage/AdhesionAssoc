@@ -61,7 +61,7 @@ onMounted(async () => {
 });
 
 const selectedActivitiesDetails = computed<Activity[]>(() => {
-  return allActivities.value.filter((activity: Activity) => formData.activites.includes(activity.id!));
+  return formData.activities;
 });
 
 const getPrice = (activity: Activity) => {
@@ -94,15 +94,22 @@ const submitForm = async () => {
     alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
     return;
   }
+
+  // Create a payload with activity IDs instead of objects
+  const payload = {
+    ...store.formData,
+    activities: store.formData.activities.map(activity => activity.id)
+  };
+
   try {
     let response;
     if (store.formData.code) {
-      response = await api.put(`/api/adhesions/${store.formData.code}`, store.formData);
+      response = await api.put(`/api/adhesions/${store.formData.code}`, payload);
       alert(`Formulaire mis à jour !`);
       store.resetForm();
       router.push('/'); // Redirige vers la page d'accueil après la mise à jour
     } else {
-      response = await api.post('/api/adhesions', store.formData);
+      response = await api.post('/api/adhesions', payload);
       store.resetForm(); // Réinitialise le formulaire mais garde le code
       store.lastGeneratedCode = response.data.code; // Stocke le code
       router.push('/confirmation'); // Redirige vers la page de confirmation

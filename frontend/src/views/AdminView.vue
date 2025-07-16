@@ -31,7 +31,7 @@
         <td>{{ adhesion.prenom }} {{ adhesion.nom }}</td>
         <td>{{ adhesion.code_postal }} {{ adhesion.ville }}</td>
         <td>{{ adhesion.adhesion_amount }}€</td>
-        <td>{{ getActivityNames(adhesion.activites) }}</td>
+        <td>{{ getActivityNames(adhesion.activities) }}</td>
         <td>{{ calculateTotalCost(adhesion) }}€</td>
         <td>{{ adhesion.status }}</td>
         <td class="actions-cell">
@@ -55,7 +55,7 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, onMounted, computed} from 'vue';
+import {ref, onMounted, onActivated, computed} from 'vue';
 import {useRouter, RouterLink} from 'vue-router';
 import {useFormStore} from '@/stores/form';
 import api, { logout } from '@/api';
@@ -130,28 +130,27 @@ const getPrice = (activity: Activity, city: string) => {
 
 const calculateTotalCost = (adhesion: Adhesion) => {
   let total = adhesion.adhesion_amount || 0;
-  if (adhesion.activites && allActivities.value.length > 0) {
-    adhesion.activites.forEach(activityId => {
-      const activity = allActivities.value.find(act => act.id === activityId);
-      if (activity) {
-        total += getPrice(activity, adhesion.ville) || 0;
-      }
+  if (adhesion.activities) {
+    adhesion.activities.forEach(activity => {
+      total += getPrice(activity, adhesion.ville) || 0;
     });
   }
   return total;
 };
 
-const getActivityNames = (activityIds: number[]) => {
-  if (!activityIds || activityIds.length === 0) {
+const getActivityNames = (activities: Activity[]) => {
+  if (!activities || activities.length === 0) {
     return 'Aucune';
   }
-  return activityIds.map(id => {
-    const activity = allActivities.value.find(act => act.id === id);
-    return activity ? activity.name : `ID ${id} inconnu`;
-  }).join(', ');
+  return activities.map(activity => activity.name).join(', ');
 };
 
 onMounted(() => {
+  fetchAdhesions();
+  fetchAllActivities();
+});
+
+onActivated(() => {
   fetchAdhesions();
   fetchAllActivities();
 });
@@ -205,7 +204,7 @@ const exportToCsv = () => {
     adhesion.code_postal,
     adhesion.ville,
     adhesion.adhesion_amount,
-    getActivityNames(adhesion.activites),
+    getActivityNames(adhesion.activities as Activity[]),
     adhesion.status,
     calculateTotalCost(adhesion)
   ]);
@@ -264,8 +263,7 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
   <td style="padding: 8px; border: 1px solid #ddd;">Adhésion</td>
   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${adhesion.adhesion_amount}</td>
   </tr>
-  ${adhesion.activites.map((activityId: number) => {
-  const activity = allActivities.value.find((act: Activity) => act.id === activityId);
+  ${adhesion.activities.map((activity: Activity) => {
   if (activity) {
   return `       <tr>
                   <td style="padding: 8px; border: 1px solid #ddd;">Activité: ${ activity.name  }</td>
@@ -273,7 +271,7 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
                 </tr>`;
   } else {
   return `      <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: ID ${ activityId } (Non trouvée)</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">Activité: (Non trouvée)</td>
                   <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">0.00</td>
                 </tr>`;
   }

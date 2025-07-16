@@ -35,7 +35,7 @@
       <h3>Liste des activités proposées</h3>
       <div v-for="activity in filteredActivities" :key="activity.id!">
         <label :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
-          <input type="checkbox" :value="activity.id" v-model="formData.activites" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
+          <input type="checkbox" :value="activity.id" v-model="selectedActivityIds" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
           {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
           <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
           <br/>
@@ -62,6 +62,7 @@ const formData = store.formData;
 const allActivities = ref<Activity[]>([]);
 const loadingActivities = ref(true);
 const activitiesError = ref<string | null>(null);
+const selectedActivityIds = ref<number[]>([]);
 
 const adherentAge = computed<number>(() => {
   if (!formData.date_naissance) return 0;
@@ -73,17 +74,6 @@ const adherentAge = computed<number>(() => {
     age--;
   }
   return age;
-});
-
-const adhesionCost = computed(() => {
-  if (adherentAge.value === null) return 0;
-
-  if (adherentAge.value >= 16) {
-    return 12; // Adult
-  } else {
-    // For children, the actual cost will be set by the radio buttons
-    return formData.adhesion_amount || 0; 
-  }
 });
 
 // Set initial adhesion amount for children if not already set
@@ -105,8 +95,14 @@ const filteredActivities = computed<Activity[]>(() => {
 
 onMounted(async () => {
   try {
+    loadingActivities.value = true;
     const response = await api.get('/api/activities');
     allActivities.value = response.data;
+
+    // Now that allActivities is available, initialize selectedActivityIds
+    if (formData.activities && Array.isArray(formData.activities)) {
+      selectedActivityIds.value = formData.activities.map(activity => activity.id).filter(id => id !== null) as number[];
+    }
   } catch (err: any) {
     activitiesError.value = err.message;
   } finally {
@@ -114,8 +110,8 @@ onMounted(async () => {
   }
 });
 
-if (!formData.activites) {
-  formData.activites = [];
+const updateStore = () => {
+    formData.activities = allActivities.value.filter(activity => selectedActivityIds.value.includes(activity.id!));
 }
 
 const nextStep = () => {
@@ -123,10 +119,12 @@ const nextStep = () => {
     alert("L'adhésion est obligatoire pour toute inscription.");
     return;
   }
+  updateStore(); // Commit changes to the store
   store.nextStep();
 };
 
 const prevStep = () => {
+  updateStore(); // Commit changes to the store
   store.prevStep();
 };
 
