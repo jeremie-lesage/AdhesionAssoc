@@ -9,39 +9,54 @@
     </p>
     <p v-if="loadingActivities">Chargement des activités...</p>
     <p v-if="activitiesError">Erreur lors du chargement des activités: {{ activitiesError }}</p>
-    <form @submit.prevent="nextStep" v-if="!loadingActivities && !activitiesError">
+    <form v-if="!loadingActivities && !activitiesError" @submit.prevent="nextStep">
       <h3>Adhésion Obligatoire</h3>
       <div class="adhesion-section">
         <label>
           Montant de l'adhésion:
         </label>
-        <div >
+        <div>
           <template v-if="adherentAge >= 16">
-          <label >
-            <input type="radio" v-model="formData.adhesion_amount" :value="12" name="adult_adhesion_amount"> 12€
-          </label>
+            <label>
+              <input v-model="formData.adhesion_amount" :value="12" name="adult_adhesion_amount" type="radio"> 12€
+            </label>
           </template>
           <template v-else>
-          <label>
-            <input type="radio" v-model="formData.adhesion_amount" :value="8" name="first_child_adhesion_amount"> 8€ (Premier enfant)
-          </label>
-          <label>
-            <input type="radio" v-model="formData.adhesion_amount" :value="6" name="child_adhesion_amount"> 6€ (Deuxième enfant et suivants)
-          </label>
+            <label>
+              <input v-model="formData.adhesion_amount" :value="8" name="first_child_adhesion_amount" type="radio"> 8€
+              (Premier enfant)
+            </label>
+            <label>
+              <input v-model="formData.adhesion_amount" :value="6" name="child_adhesion_amount" type="radio"> 6€
+              (Deuxième enfant et suivants)
+            </label>
           </template>
         </div>
       </div>
 
       <h3>Liste des activités proposées</h3>
+      <p v-if="adherentAge < 16">Détails des activités sur <a
+          href="https://foyerruralfauverney.fr/activites/activites-enfant/" target="_blank">notre site internet</a></p>
+      <p v-else> Détails des activités sur <a href="https://foyerruralfauverney.fr/activites/activites-adulte/"
+                                              target="_blank">notre site internet</a></p>
       <div v-for="activity in filteredActivities" :key="activity.id!">
-        <label :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
-          <input type="checkbox" :value="activity.id" v-model="selectedActivityIds" :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants">
-          {{ activity.name }} <span v-if="activity.description">- {{ activity.description }}</span>
-          <span v-if="getPrice(activity) !== null"> (Tarif: {{ getPrice(activity) }}€)</span>
+        <label
+            :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
+
+          <div style="width: 75%; display: inline-block"><input v-model="selectedActivityIds"
+                                                                :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
+                                                                :value="activity.id"
+                                                                type="checkbox"> {{ activity.name }} <span
+              v-if="activity.description">- {{ activity.description }}</span></div>
+          <span v-if="getPrice(activity) !== null" style="font-weight: bold"> Tarif: {{ getPrice(activity) }}€</span>
           <br/>
-          <span v-if="activity.location" style="margin-left: 1.5rem"> (Lieu: {{ activity.location }})</span>
-          <span v-if="activity.max_participants > 0"> (Places restantes: {{ activity.max_participants - (activity.current_participants || 0) }})</span>
-          <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants" style="color: red;"> (Complet)</span>
+          <div v-if="activity.location" style="width: 72%; display: inline-block; padding-left: 1.5rem"> {{ activity.location }}</div>
+          <span v-if="activity.max_participants > 0"  > (Places restantes: {{
+              activity.max_participants - (activity.current_participants || 0)
+            }})
+          </span>
+          <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
+                style="color: red;"> (Complet)</span>
         </label>
       </div>
       <button @click="prevStep">Précédent</button>
@@ -50,11 +65,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
-import { useFormStore } from '@/stores/form';
+<script lang="ts" setup>
+import {ref, onMounted, computed, watch} from 'vue';
+import {useFormStore} from '@/stores/form';
 import api from '@/api';
-import type { Activity } from '@/types';
+import type {Activity} from '@/types';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -81,7 +96,7 @@ watch(adherentAge, (newAge) => {
   if (newAge !== null && newAge < 16 && formData.adhesion_amount === null) {
     formData.adhesion_amount = 8; // Default to 8€ for first child
   }
-}, { immediate: true });
+}, {immediate: true});
 
 const filteredActivities = computed<Activity[]>(() => {
   if (adherentAge.value === null) return [];
@@ -111,7 +126,7 @@ onMounted(async () => {
 });
 
 const updateStore = () => {
-    formData.activities = allActivities.value.filter(activity => selectedActivityIds.value.includes(activity.id!));
+  formData.activities = allActivities.value.filter(activity => selectedActivityIds.value.includes(activity.id!));
 }
 
 const nextStep = () => {
