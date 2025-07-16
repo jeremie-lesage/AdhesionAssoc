@@ -5,4 +5,5 @@ passlib==1.7.4
 bcrypt==4.0.1
 pydantic[email]==2.11.7
 psycopg2-binary
-sqlalchemyfastapi-mail
+sqlalchemy
+fastapi-mail
