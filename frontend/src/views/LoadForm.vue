@@ -8,19 +8,38 @@
       </div>
       <button type="submit">Charger</button>
     </form>
+    <div v-if="recentCodes.length > 0" class="recent-codes">
+      <h3>Codes récents</h3>
+      <ul>
+        <li v-for="recentCode in recentCodes" :key="recentCode">
+          <a href="#" @click.prevent="useCode(recentCode)">{{ recentCode }}</a>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useFormStore } from '@/stores/form';
-import axios from 'axios';
 import { useRouter } from 'vue-router';
 import api from "@/api.ts";
 
 const store = useFormStore();
 const router = useRouter();
 const code = ref('');
+const recentCodes = ref<string[]>([]);
+
+onMounted(() => {
+  const codes = localStorage.getItem('recentCodes');
+  if (codes) {
+    recentCodes.value = JSON.parse(codes);
+  }
+});
+
+const useCode = (selectedCode: string) => {
+  code.value = selectedCode;
+};
 
 const loadForm = async () => {
   try {
@@ -38,3 +57,25 @@ const loadForm = async () => {
   }
 };
 </script>
+
+<style scoped>
+.recent-codes {
+  margin-top: 20px;
+}
+.recent-codes ul {
+  list-style: none;
+  padding: 0;
+}
+.recent-codes li {
+  display: inline-block;
+  margin-right: 10px;
+}
+.recent-codes a {
+  text-decoration: none;
+  color: #007bff;
+  cursor: pointer;
+}
+.recent-codes a:hover {
+  text-decoration: underline;
+}
+</style>

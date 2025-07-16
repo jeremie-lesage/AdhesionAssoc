@@ -110,8 +110,19 @@ const submitForm = async () => {
       router.push('/'); // Redirige vers la page d'accueil après la mise à jour
     } else {
       response = await api.post('/api/adhesions', payload);
+      const newCode = response.data.code;
+
+      // Save the new code to localStorage
+      const recentCodes = JSON.parse(localStorage.getItem('recentCodes') || '[]');
+      recentCodes.unshift(newCode);
+      if (recentCodes.length > 5) {
+        recentCodes.pop();
+      }
+      localStorage.setItem('recentCodes', JSON.stringify(recentCodes));
+
+
       store.resetForm(); // Réinitialise le formulaire mais garde le code
-      store.lastGeneratedCode = response.data.code; // Stocke le code
+      store.lastGeneratedCode = newCode; // Stocke le code
       router.push('/confirmation'); // Redirige vers la page de confirmation
     }
   } catch (error) {
