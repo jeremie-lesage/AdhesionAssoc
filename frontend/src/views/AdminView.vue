@@ -225,7 +225,7 @@ const exportToCsv = () => {
 
 const generateReceiptPdf = async (adhesion: Adhesion) => {
   const receiptContent = `
-    <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 1px solid #ccc;">
+    <div style="padding: 10mm; font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0 auto; border: 0px solid #ccc;">
   <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
   <tr>
   <td style="width: 50%; vertical-align: top;">
@@ -253,7 +253,7 @@ const generateReceiptPdf = async (adhesion: Adhesion) => {
 
   <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
   <thead>
-  <tr style="background-color: #007bff; color: white;">
+  <tr style="color: #202020;">
   <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Description</th>
   <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Montant (€)</th>
   </tr>
