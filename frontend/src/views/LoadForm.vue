@@ -8,11 +8,13 @@
       </div>
       <button type="submit">Charger</button>
     </form>
-    <div v-if="recentCodes.length > 0" class="recent-codes">
+    <div v-if="recentAdhesions.length > 0" class="recent-codes">
       <h3>Codes récents</h3>
       <ul>
-        <li v-for="recentCode in recentCodes" :key="recentCode">
-          <a href="#" @click.prevent="useCode(recentCode)">{{ recentCode }}</a>
+        <li v-for="adhesion in recentAdhesions" :key="adhesion.code">
+          <a href="#" @click.prevent="useCode(adhesion.code)">
+            {{ adhesion.code }} - {{ adhesion.prenom }} {{ adhesion.nom }}
+          </a>
         </li>
       </ul>
     </div>
@@ -21,19 +23,34 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useFormStore } from '@/stores/form';
 import { useRouter } from 'vue-router';
 import api from "@/api.ts";
+import type { Adhesion } from '@/types';
 
-const store = useFormStore();
 const router = useRouter();
 const code = ref('');
-const recentCodes = ref<string[]>([]);
+const recentAdhesions = ref<Partial<Adhesion>[]>([]);
 
-onMounted(() => {
-  const codes = localStorage.getItem('recentCodes');
-  if (codes) {
-    recentCodes.value = JSON.parse(codes);
+onMounted(async () => {
+  const codesJson = localStorage.getItem('recentCodes');
+  if (codesJson) {
+    const codes: string[] = JSON.parse(codesJson);
+    const adhesionPromises = codes.map(async (code) => {
+      try {
+        const response = await api.get<Adhesion>(`/api/adhesions/${code}`);
+        return {
+          code: response.data.code,
+          nom: response.data.nom,
+          prenom: response.data.prenom
+        };
+      } catch (error) {
+        console.error(`Impossible de charger les détails pour le code ${code}`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(adhesionPromises);
+    recentAdhesions.value = results.filter(Boolean) as Partial<Adhesion>[];
   }
 });
 
@@ -42,14 +59,13 @@ const useCode = (selectedCode: string) => {
 };
 
 const loadForm = async () => {
+  if (!code.value) return;
   try {
-    // On vérifie juste si le formulaire existe et n'est pas finalisé
     const response = await api.get(`/api/adhesions/${code.value}`);
     if (response.data.status === 'validated' || response.data.status === 'paid') {
       alert('Ce formulaire a déjà été finalisé et ne peut plus être modifié.');
       return;
     }
-    // On redirige vers le formulaire qui se chargera de récupérer les données
     router.push({ name: 'adhesion', query: { code: code.value } });
   } catch (error) {
     console.error(error);
@@ -67,13 +83,13 @@ const loadForm = async () => {
   padding: 0;
 }
 .recent-codes li {
-  display: inline-block;
-  margin-right: 10px;
+  margin-bottom: 8px;
 }
 .recent-codes a {
   text-decoration: none;
   color: #007bff;
   cursor: pointer;
+  font-weight: bold;
 }
 .recent-codes a:hover {
   text-decoration: underline;
