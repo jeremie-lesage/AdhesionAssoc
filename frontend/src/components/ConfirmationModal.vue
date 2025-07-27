@@ -13,6 +13,10 @@
         <br>
         Un email vous sera envoyé dans les prochains jours pour confirmer l'inscription et le montant à régler.
       </p>
+      <div class="code-section">
+        <p>Pour toute modification, conservez votre code de dossier :</p>
+        <p class="form-id"><strong>{{ formId }}</strong></p>
+      </div>
       <button @click="close" class="close-button">Fermer</button>
     </div>
   </div>
@@ -20,7 +24,8 @@
 
 <script setup lang="ts">
 defineProps<{
-  visible: boolean
+  visible: boolean,
+  formId: string
 }>()
 
 const emit = defineEmits<{
@@ -118,12 +123,36 @@ h3 {
 }
 
 p {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   color: #666;
   line-height: 1.6;
 }
 
+.code-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #f2f2f2;
+  border-radius: 4px;
+}
+
+.code-section p {
+  margin: 0;
+}
+
+.form-id {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  background-color: #e0e0e0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  letter-spacing: 2px;
+  margin-top: 0.5rem;
+}
+
 .close-button {
+  margin-top: 1rem;
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 4px;

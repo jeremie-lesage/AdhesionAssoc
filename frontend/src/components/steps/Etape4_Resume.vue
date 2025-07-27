@@ -37,7 +37,7 @@
     <button @click="prevStep">Précédent</button>
     <button @click="submitForm">Valider</button>
 
-    <ConfirmationModal :visible="isModalVisible" @close="handleModalClose" />
+    <ConfirmationModal :visible="isModalVisible" :form-id="formIdToDisplay" @close="handleModalClose" />
   </div>
 
 </template>
@@ -73,6 +73,10 @@ onMounted(async () => {
   } catch (error) {
     console.error("Erreur lors du chargement des données:", error);
   }
+});
+
+const formIdToDisplay = computed(() => {
+  return store.formData.code || store.lastGeneratedCode || '';
 });
 
 const selectedActivitiesDetails = computed<Activity[]>(() => {
