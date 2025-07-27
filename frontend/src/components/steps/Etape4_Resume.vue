@@ -6,7 +6,7 @@
         <h3>Résumé</h3>
 
         <p><strong>Email:</strong> {{ formData.email }}</p>
-        <p><strong>Adhérant:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
+        <p><strong>Adhérent:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
         <p><strong>Date de Naissance:</strong> {{ formattedDateNaissance }}</p>
         <p><strong>Adresse:</strong> {{ formData.numero_rue }}, {{ formData.nom_rue }} - {{ formData.code_postal }}
           {{ formData.ville }}</p>
@@ -20,7 +20,7 @@
         <p><strong>Coût total:</strong> {{ totalCost }}€</p>
       </div>
       <div class="payment-section">
-        <h3>Moyens de Paiements</h3>
+        <h3>Moyens de paiement</h3>
         <h4>Par chèque</h4>
         <ul style="padding-left: 1rem;">
           <li>Soit 1 chèque de {{ totalCost }} € (Encaissement en Octobre)</li>
@@ -30,7 +30,7 @@
         <pre>{{ bank }}</pre>
         <pre>IBAN: {{ iban }}</pre>
         <pre>BIC: {{ bic }}</pre>
-        <b>Pensez à mettre le nom de l'adhérant dans l'objet du virement.</b>
+        <b>Pensez à mettre le nom de l'adhérent dans l'objet du virement.</b>
       </div>
     </div>
 
