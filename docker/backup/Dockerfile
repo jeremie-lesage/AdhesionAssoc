@@ -10,4 +10,4 @@ COPY crontab .
 RUN chmod +x backup.sh
 RUN crontab crontab
 
-CMD ["crond", "-f", "-L", "/var/log/cron.log"]
+CMD ["sh", "-c", "crond -L /var/log/cron.log && tail -f /var/log/cron.log"]
