@@ -7,8 +7,8 @@ from sqlalchemy import create_engine
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from database import Base, Activity, Adhesion
-from models import AdhesionCreate
+from models import Base, Activity, Adhesion
+from schemas import AdhesionCreate
 import crud
 
 # Use an in-memory SQLite database for testing
@@ -42,7 +42,7 @@ def test_create_adhesion_with_activities(db_session):
         prenom="Adherent",
         date_naissance="2000-01-01",
         ville="Testville",
-        activites=[activity1.id, activity2.id]
+        activities=[activity1.id, activity2.id]
     )
 
     # 3. Call the function to be tested
@@ -73,7 +73,7 @@ def test_update_adhesion_with_activities(db_session):
         email="update.test@example.com",
         nom="Update",
         prenom="Test",
-        activites=[activity1.id]
+        activities=[activity1.id]
     )
     created_adhesion = crud.create_adhesion(db=db_session, adhesion=initial_adhesion_data)
     
@@ -81,7 +81,7 @@ def test_update_adhesion_with_activities(db_session):
     update_adhesion_data = AdhesionCreate(
         email="update.test@example.com", # email is the same
         nom="UpdatedNom", # name is changed
-        activites=[activity2.id, activity3.id] # activities are changed
+        activities=[activity2.id, activity3.id] # activities are changed
     )
 
     # 3. Call the update function
@@ -96,3 +96,31 @@ def test_update_adhesion_with_activities(db_session):
     
     activity_names_in_db = sorted([act.name for act in db_adhesion.activities])
     assert activity_names_in_db == ["Danse", "Musique"]
+
+def test_update_adhesion_without_activities_preserves_them(db_session):
+    """Updating fields without sending activities should not clear existing ones."""
+    activity1 = Activity(name="Yoga", description="Cours de Yoga")
+    activity2 = Activity(name="Danse", description="Cours de Danse")
+    db_session.add_all([activity1, activity2])
+    db_session.commit()
+
+    initial = AdhesionCreate(
+        email="preserve@example.com",
+        nom="Original",
+        prenom="Test",
+        activities=[activity1.id, activity2.id]
+    )
+    created = crud.create_adhesion(db=db_session, adhesion=initial)
+
+    update_without_activities = AdhesionCreate.model_construct(
+        email="preserve@example.com",
+        nom="Modified",
+    )
+
+    updated = crud.update_adhesion(db=db_session, code=created.code, adhesion=update_without_activities)
+
+    db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == updated.id).one()
+    assert db_adhesion.nom == "Modified"
+    assert len(db_adhesion.activities) == 2, "Activities should be preserved when not included in update"
+    activity_names = sorted([a.name for a in db_adhesion.activities])
+    assert activity_names == ["Danse", "Yoga"]
