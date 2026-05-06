@@ -14,11 +14,12 @@ _.python.venv = { path = ".venv", create = true }
 [tasks.install]
 description = "Install dependencies"
 alias = "i"
-run = "uv pip install -r backend/requirements.txt"
+dir = "backend"
+run = "uv sync"
 
 [tasks.serve]
 description = "Run local server"
 alias = "s"
 dir = "backend"
-run = "uvicorn main:app --host 0.0.0.0 --port 8000"
+run = "uv run uvicorn main:app --host 0.0.0.0 --port 8000"
 
