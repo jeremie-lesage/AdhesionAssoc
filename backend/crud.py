@@ -104,11 +104,13 @@ def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optiona
     if db_adhesion.status == 'validated':
         raise ValueError("Cannot update a validated adhesion")
 
-    update_data = adhesion.model_dump(exclude_unset=True, exclude={'activities'})
+    update_data = adhesion.model_dump(exclude_unset=True)
+    activities_update = update_data.pop('activities', None)
+
     for key, value in update_data.items():
         setattr(db_adhesion, key, value)
 
-    if 'activities' in adhesion.model_dump_json():
+    if activities_update is not None:
         db_adhesion.activities.clear()
         if adhesion.activities:
             activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
