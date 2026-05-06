@@ -6,7 +6,7 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
 
 - `/backend`: Contient l'application FastAPI.
 - `/frontend`: Contient l'application Vue.js.
-- `/docker`: Contient la configuration Docker Compose et Nginx.
+- `/docker`: Contient la configuration Docker Compose et Caddy.
 
 ## Démarrage Rapide
 
@@ -19,12 +19,12 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
 
 2.  **Installer les dépendances :**
     ```bash
-    pip install -r requirements.txt
+    uv sync
     ```
 
 3.  **Lancer le serveur de développement :**
     ```bash
-    uvicorn main:app --host 0.0.0.0 --port 8000
+    uv run uvicorn main:app --host 0.0.0.0 --port 8000
     ```
     Le backend sera alors accessible à l'adresse `http://localhost:8000`.
 
@@ -88,7 +88,7 @@ Pour lancer l'ensemble de l'application (frontend, backend, base de données Pos
 5.  **Accéder à l'application :**
     Une fois les conteneurs démarrés, l'application est accessible via votre navigateur à l'adresse `http://localhost:8000`.
 
-    - Le reverse proxy Nginx écoute sur le port 8000 et redirige le trafic :
+    - Le reverse proxy Caddy gère le TLS automatique et redirige le trafic :
         - Les requêtes vers `/api/...` sont transmises au backend.
         - Toutes les autres requêtes sont servies par le frontend.
 
