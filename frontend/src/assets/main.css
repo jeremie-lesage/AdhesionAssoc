@@ -1,11 +1,13 @@
+@layer app {
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   --color-background: #f8f8f8;
   --color-text: #333;
-  --color-primary: #4a90e2; /* Bleu doux */
+  --color-primary: #4a90e2;
   --color-primary-light: #7bb0f0;
-  --color-secondary: #50e3c2; /* Vert menthe */
+  --color-secondary: #50e3c2;
   --color-border: #e0e0e0;
   --color-hover: #f0f0f0;
 }
@@ -25,13 +27,13 @@ body {
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  text-align: left; /* Alignement du texte à gauche pour la lisibilité */
+  text-align: left;
 }
 
 h1, h2, h3 {
   color: var(--color-primary);
   margin-bottom: 1.5rem;
-  text-align: center; /* Centrer les titres */
+  text-align: center;
 }
 
 /* Navigation */
@@ -60,21 +62,30 @@ nav a.router-link-active {
   color: #fff;
 }
 
-/* Formulaires */
-form div {
+/* Messages de confirmation/erreur */
+p strong {
+  color: var(--color-primary);
+}
+
+#app > .router-view {
+  margin-top: 2rem;
+}
+
+/* Styles spécifiques aux vues publiques (formulaire, accueil) */
+.public-view form div {
   margin-bottom: 1rem;
 }
 
-label {
+.public-view label {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="date"],
-textarea {
+.public-view input[type="text"],
+.public-view input[type="email"],
+.public-view input[type="date"],
+.public-view textarea {
   width: calc(100% - 1.5rem);
   padding: 0.8rem;
   border: 1px solid var(--color-border);
@@ -83,12 +94,12 @@ textarea {
   box-sizing: border-box;
 }
 
-textarea {
+.public-view textarea {
   resize: vertical;
   min-height: 80px;
 }
 
-button {
+.public-view button {
   background-color: var(--color-primary);
   color: white;
   padding: 0.8rem 1.5rem;
@@ -100,42 +111,33 @@ button {
   margin-right: 0.8rem;
 }
 
-button:hover {
+.public-view button:hover {
   background-color: var(--color-primary-light);
 }
 
-button:last-child {
+.public-view button:last-child {
   margin-right: 0;
 }
 
-/* Tableau (pour la page admin) */
-table {
+.public-view table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1.5rem;
 }
 
-th, td {
+.public-view th, .public-view td {
   border: 1px solid var(--color-border);
   padding: 12px;
   text-align: left;
 }
 
-th {
+.public-view th {
   background-color: var(--color-hover);
   font-weight: 600;
 }
 
-tr:nth-child(even) {
+.public-view tr:nth-child(even) {
   background-color: #fdfdfd;
 }
 
-/* Messages de confirmation/erreur */
-p strong {
-  color: var(--color-primary);
-}
-
-/* Ajustements spécifiques pour App.vue */
-#app > .router-view {
-  margin-top: 2rem;
 }

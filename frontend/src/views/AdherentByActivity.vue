@@ -1,16 +1,20 @@
 <template>
   <div>
     <h2>Adhérents par Activité</h2>
-    <RouterLink to="/admin" class="button">Retour à l'Administration</RouterLink>
+    <Button label="Retour à l'Administration" icon="pi pi-arrow-left" severity="secondary" as="router-link" to="/admin" />
 
-    <div class="activity-selector">
+    <div style="display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0;">
       <label for="activity-select">Sélectionner une activité:</label>
-      <select id="activity-select" v-model="selectedActivityId" @change="fetchAdherentsForActivity">
-        <option value="">-- Choisir une activité --</option>
-        <option v-for="activity in activities" :key="activity.id!" :value="activity.id">
-          {{ activity.name }}
-        </option>
-      </select>
+      <Select
+        id="activity-select"
+        v-model="selectedActivityId"
+        :options="activities"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Choisir une activité"
+        fluid
+        @change="fetchAdherentsForActivity"
+      />
     </div>
 
     <p v-if="loading">Chargement des adhérents...</p>
@@ -19,26 +23,14 @@
     <div v-if="selectedActivityId && !loading && !error">
       <h3>Adhérents pour l'activité: {{ selectedActivityName }}</h3>
       <p>Nombre total d'adhérents: {{ adherents.length }}</p>
-      <button @click="exportToCsv" :disabled="!adherents.length" class="button export-button">Exporter en CSV</button>
+      <Button label="Exporter en CSV" icon="pi pi-download" severity="success" :disabled="!adherents.length" @click="exportToCsv" style="margin-bottom: 1rem;" />
 
-      <table v-if="adherents.length">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>Prénom</th>
-            <th>Email</th>
-            <th>Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="adherent in adherents" :key="adherent.id!">
-            <td>{{ adherent.nom }}</td>
-            <td>{{ adherent.prenom }}</td>
-            <td>{{ adherent.email }}</td>
-            <td>{{ adherent.status }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <DataTable v-if="adherents.length" :value="adherents" stripedRows>
+        <Column field="nom" header="Nom" sortable />
+        <Column field="prenom" header="Prénom" sortable />
+        <Column field="email" header="Email" sortable />
+        <Column field="status" header="Statut" sortable />
+      </DataTable>
       <p v-else>Aucun adhérent pour cette activité.</p>
     </div>
   </div>
@@ -47,8 +39,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
-import { RouterLink, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import type { Activity, Adhesion } from '@/types';
+import Button from 'primevue/button';
+import Select from 'primevue/select';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
 
 const activities = ref<Activity[]>([]);
 const selectedActivityId = ref<number | string>('');
@@ -125,58 +121,3 @@ onMounted(() => {
   fetchActivities();
 });
 </script>
-
-<style scoped>
-.activity-selector {
-  margin-bottom: 20px;
-}
-
-.activity-selector label {
-  margin-right: 10px;
-}
-
-.activity-selector select {
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-th {
-  background-color: #f2f2f2;
-}
-
-.button {
-  display: inline-block;
-  padding: 10px 15px;
-  background-color: #007bff;
-  color: white;
-  text-decoration: none;
-  border-radius: 5px;
-  margin-bottom: 20px;
-}
-
-.button:hover {
-  background-color: #0056b3;
-}
-
-.export-button {
-  background-color: #28a745;
-  margin-left: 10px;
-}
-
-.export-button:hover {
-  background-color: #218838;
-}
-</style>

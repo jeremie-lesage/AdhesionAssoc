@@ -1,27 +1,34 @@
 <template>
-  <div class="login-container">
-    <h2>Connexion Administrateur</h2>
-    <form @submit.prevent="login">
-      <div class="form-group">
-        <label for="username">Nom d'utilisateur:</label>
-        <input type="text" id="username" v-model="username" required>
-      </div>
-      <div class="form-group">
-        <label for="password">Mot de passe:</label>
-        <input type="password" id="password" v-model="password" required>
-      </div>
-      <button type="submit" :disabled="loading">{{ loading ? 'Connexion...' : 'Se connecter' }}</button>
-      <p v-if="error" class="error-message">{{ error }}</p>
-    </form>
-  </div>
+  <Card style="max-width: 400px; margin: 50px auto">
+    <template #title>Connexion Administrateur</template>
+    <template #content>
+      <form @submit.prevent="login" style="display: flex; flex-direction: column; gap: 1rem">
+        <div>
+          <label for="username" style="display: block; margin-bottom: 0.5rem; font-weight: bold">Nom d'utilisateur :</label>
+          <InputText v-model="username" id="username" fluid />
+        </div>
+        <div>
+          <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: bold">Mot de passe :</label>
+          <Password v-model="password" id="password" :feedback="false" toggleMask fluid />
+        </div>
+        <Button label="Se connecter" :loading="loading" type="submit" fluid />
+        <Message severity="error" v-if="error">{{ error }}</Message>
+      </form>
+    </template>
+  </Card>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { login as apiLogin } from '@/api';
+import Card from 'primevue/card';
+import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
+import Button from 'primevue/button';
+import Message from 'primevue/message';
 
-const username = ref('admin');
+const username = ref('');
 const password = ref('');
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -44,68 +51,3 @@ const login = async () => {
   }
 };
 </script>
-
-<style scoped>
-.login-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  background-color: #fff;
-  text-align: center;
-}
-
-.login-container h2 {
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-  text-align: left;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #555;
-}
-
-.form-group input[type="text"],
-.form-group input[type="password"] {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease;
-}
-
-button:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.error-message {
-  color: red;
-  margin-top: 10px;
-}
-</style>

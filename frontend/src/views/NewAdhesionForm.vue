@@ -52,7 +52,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="public-view">
     <div v-if="isLoading">Chargement du formulaire...</div>
     <component v-else :is="currentStepComponent" />
   </div>

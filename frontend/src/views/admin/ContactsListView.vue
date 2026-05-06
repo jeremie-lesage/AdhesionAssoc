@@ -1,28 +1,25 @@
 <template>
-  <div class="container mt-4">
+  <div style="max-width: 960px; margin: 1.5rem auto">
     <h1>Gérer les Demandes par Contact</h1>
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Email du Contact</th>
-          <th>Statut</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="contact in contacts" :key="contact.email">
-          <td>{{ contact.email }}</td>
-          <td>
-            <span :class="getStatusClass(contact.status)">{{ contact.status }}</span>
-          </td>
-          <td>
-            <router-link :to="{ name: 'FamilyDetails', params: { email: contact.email } }" class="btn btn-primary">
-              Voir les détails
-            </router-link>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <DataTable :value="contacts" stripedRows>
+      <Column field="email" header="Email du Contact" />
+      <Column header="Statut">
+        <template #body="{ data }">
+          <Tag :value="data.status" :severity="getStatusSeverity(data.status)" />
+        </template>
+      </Column>
+      <Column header="Actions">
+        <template #body="{ data }">
+          <Button
+            label="Voir les détails"
+            icon="pi pi-eye"
+            size="small"
+            as="router-link"
+            :to="{ name: 'FamilyDetails', params: { email: data.email } }"
+          />
+        </template>
+      </Column>
+    </DataTable>
   </div>
 </template>
 
@@ -30,6 +27,10 @@
 import { ref, onMounted } from 'vue';
 import { getContacts } from '@/api';
 import type { ContactStatus } from '@/types';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Tag from 'primevue/tag';
+import Button from 'primevue/button';
 
 const contacts = ref<ContactStatus[]>([]);
 
@@ -41,22 +42,16 @@ onMounted(async () => {
   }
 });
 
-const getStatusClass = (status: string) => {
+const getStatusSeverity = (status: string) => {
   switch (status) {
     case 'pending':
-      return 'badge bg-warning text-dark';
+      return 'warn';
     case 'payé':
-      return 'badge bg-success';
+      return 'success';
     case 'Incomplet':
-      return 'badge bg-info text-dark';
+      return 'info';
     default:
-      return 'badge bg-secondary';
+      return 'secondary';
   }
 };
 </script>
-
-<style scoped>
-.container {
-  max-width: 960px;
-}
-</style>

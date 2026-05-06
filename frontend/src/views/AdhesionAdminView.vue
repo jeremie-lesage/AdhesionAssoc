@@ -3,19 +3,37 @@ import {ref, onMounted, computed} from 'vue';
 import {useRouter} from 'vue-router';
 import {getAdhesions, deleteAdhesion, validateAdhesion, updateAdhesionPayment} from '../api';
 import type {Adhesion, Activity} from '../types';
+import { useConfirm } from 'primevue/useconfirm';
 import PaymentModal from '../components/PaymentModal.vue';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Tag from 'primevue/tag';
+import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
+import Message from 'primevue/message';
+import ConfirmDialog from 'primevue/confirmdialog';
 
+const confirm = useConfirm();
 const adhesions = ref<Adhesion[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const success = ref<string | null>(null);
 const router = useRouter();
 const selectedStatus = ref('all'); // 'all', 'pending', 'validated', 'paid'
+const searchQuery = ref('');
 
 const isPaymentModalVisible = ref(false);
 const selectedAdhesionCode = ref<string | null>(null);
 
 const backendUrl = window.BACKEND_URL || 'http://localhost:8000';
+
+const statusOptions = [
+  { label: 'Tous', value: 'all' },
+  { label: 'En attente', value: 'pending' },
+  { label: 'Validé', value: 'validated' },
+  { label: 'Payé', value: 'paid' },
+];
 
 const fetchAdhesions = async () => {
   try {
@@ -41,15 +59,46 @@ const adhesionsWithTotal = computed(() => {
   return adhesions.value.map(adhesion => ({
     ...adhesion,
     totalCost: calculateTotalCost(adhesion),
+    fullName: `${adhesion.prenom} ${adhesion.nom}`,
+    activitiesDisplay: adhesion.activities.map(a => a.name).join(', '),
   }));
 });
 
 const filteredAdhesions = computed(() => {
-  if (selectedStatus.value === 'all') {
-    return adhesionsWithTotal.value;
+  let result = adhesionsWithTotal.value;
+  if (selectedStatus.value !== 'all') {
+    result = result.filter(adhesion => adhesion.status === selectedStatus.value);
   }
-  return adhesionsWithTotal.value.filter(adhesion => adhesion.status === selectedStatus.value);
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(adhesion =>
+      adhesion.nom.toLowerCase().includes(query) ||
+      adhesion.prenom.toLowerCase().includes(query) ||
+      adhesion.email.toLowerCase().includes(query) ||
+      adhesion.ville.toLowerCase().includes(query) ||
+      adhesion.code.toLowerCase().includes(query)
+    );
+  }
+  return result;
 });
+
+const getStatusSeverity = (status: string) => {
+  switch (status) {
+    case 'pending': return 'warn';
+    case 'validated': return 'success';
+    case 'paid': return 'info';
+    default: return undefined;
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'pending': return 'En attente';
+    case 'validated': return 'Validé';
+    case 'paid': return 'Payé';
+    default: return status;
+  }
+};
 
 const exportToCSV = () => {
   const headers = [
@@ -126,238 +175,83 @@ const handleReceipt = (code: string) => {
   window.open(`${backendUrl}/api/adhesions/${code}/receipt`, '_blank');
 };
 
-const removeAdhesion = async (code: string) => {
-  if (window.confirm("Êtes-vous sûr de vouloir supprimer cette adhésion ?")) {
-    try {
-      await deleteAdhesion(code);
-      adhesions.value = adhesions.value.filter(adhesion => adhesion.code !== code);
-      success.value = `L'adhésion ${code} a été supprimée.`;
-    } catch (err) {
-      error.value = "Erreur lors de la suppression de l'adhésion.";
-    }
-  }
+const removeAdhesion = (code: string) => {
+  confirm.require({
+    message: 'Êtes-vous sûr de vouloir supprimer cette adhésion ?',
+    header: 'Confirmation',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Supprimer',
+    rejectLabel: 'Annuler',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await deleteAdhesion(code);
+        adhesions.value = adhesions.value.filter(adhesion => adhesion.code !== code);
+        success.value = `L'adhésion ${code} a été supprimée.`;
+      } catch (err) {
+        error.value = "Erreur lors de la suppression de l'adhésion.";
+      }
+    },
+  });
 };
 
 onMounted(fetchAdhesions);
 </script>
 
 <template>
-  <div class="admin-container">
+  <div style="padding: 2rem;">
     <h1>Administration des Adhésions</h1>
 
-    <div class="top-bar">
-      <div class="filters">
-        <button :class="{ active: selectedStatus === 'all' }" @click="selectedStatus = 'all'">Tous</button>
-        <button :class="{ active: selectedStatus === 'pending' }" @click="selectedStatus = 'pending'">En attente
-        </button>
-        <button :class="{ active: selectedStatus === 'validated' }" @click="selectedStatus = 'validated'">Validé
-        </button>
-        <button :class="{ active: selectedStatus === 'paid' }" @click="selectedStatus = 'paid'">Payé</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <InputText v-model="searchQuery" placeholder="Rechercher..." style="width: 250px;" />
+        <Select v-model="selectedStatus" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Statut" style="width: 180px;" />
       </div>
-      <button class="export-button" @click="exportToCSV">Exporter en CSV</button>
+      <Button label="Exporter CSV" icon="pi pi-download" @click="exportToCSV" />
     </div>
 
-    <div v-if="loading">Chargement...</div>
-    <div v-if="error" class="error-message" @click="error = null">{{ error }}</div>
-    <div v-if="success" class="success-message" @click="success = null">{{ success }}</div>
-    <div v-if="!loading && !error" class="table-container">
-      <table class="adhesions-table">
-        <thead>
-        <tr>
-          <th>Nom Complet</th>
-          <th>Email</th>
-          <th>Ville</th>
-          <th>Adhésion</th>
-          <th>Activités</th>
-          <th>Coût Total</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="adhesion in filteredAdhesions" :key="adhesion.code">
-          <td>{{ adhesion.prenom }} {{ adhesion.nom }}</td>
-          <td :title="adhesion.email" style="max-width: 3rem; text-overflow: ellipsis; overflow: hidden">
-            {{ adhesion.email }}
-          </td>
-          <td>{{ adhesion.ville }}</td>
-          <td>{{ adhesion.adhesion_amount }} €</td>
-          <td>
-            <ul style="list-style-type: none; padding: 0">
-              <li v-for="activity in adhesion.activities" :key="`${adhesion.code}-${activity.id}`">{{
-                  activity.name
-                }}
-              </li>
-            </ul>
-          </td>
-          <td>{{ adhesion.totalCost.toFixed(0) }} €</td>
-          <td>
-            <span :class="`status status-${adhesion.status}`">{{ adhesion.status }}</span>
-          </td>
-          <td class="actions">
-            <button v-if="adhesion.status !== 'paid'" class="action-button" title="Corriger"
-                    @click="handleEdit(adhesion.code)">✏️
-            </button>
-            <button v-if="adhesion.status === 'pending'" class="action-button" title="Valider"
-                    @click="handleValidate(adhesion.code)">✔️
-            </button>
-            <button v-if="adhesion.status === 'pending' || adhesion.status === 'validated'"
-                    class="action-button" title="Payer" @click="openPaymentModal(adhesion.code)">💶
-            </button>
-            <button v-if="adhesion.status === 'paid'" class="action-button" title="Reçu"
-                    @click="handleReceipt(adhesion.code)">🧾
-            </button>
-            <button class="action-button" title="Supprimer" @click="removeAdhesion(adhesion.code)">🗑️</button>
+    <div v-if="loading" style="padding: 1rem;">Chargement...</div>
+    <Message v-if="error" severity="error" :closable="true" @close="error = null">{{ error }}</Message>
+    <Message v-if="success" severity="success" :closable="true" @close="success = null">{{ success }}</Message>
 
+    <DataTable v-if="!loading" :value="filteredAdhesions" paginator :rows="20" stripedRows sortMode="multiple" removableSort>
+      <Column field="fullName" header="Nom Complet" sortable />
+      <Column field="email" header="Email" sortable style="max-width: 12rem; overflow: hidden; text-overflow: ellipsis;" />
+      <Column field="ville" header="Ville" sortable />
+      <Column field="adhesion_amount" header="Adhésion" sortable>
+        <template #body="{ data }">{{ data.adhesion_amount }} €</template>
+      </Column>
+      <Column field="activitiesDisplay" header="Activités">
+        <template #body="{ data }">
+          <ul style="list-style-type: none; padding: 0; margin: 0;">
+            <li v-for="activity in data.activities" :key="`${data.code}-${activity.id}`">{{ activity.name }}</li>
+          </ul>
+        </template>
+      </Column>
+      <Column field="totalCost" header="Coût Total" sortable>
+        <template #body="{ data }">{{ data.totalCost.toFixed(0) }} €</template>
+      </Column>
+      <Column field="status" header="Statut" sortable>
+        <template #body="{ data }">
+          <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
+        </template>
+      </Column>
+      <Column header="Actions" style="min-width: 12rem;">
+        <template #body="{ data }">
+          <Button v-if="data.status !== 'paid'" icon="pi pi-pencil" severity="info" text rounded size="small" title="Corriger" @click="handleEdit(data.code)" />
+          <Button v-if="data.status === 'pending'" icon="pi pi-check" severity="success" text rounded size="small" title="Valider" @click="handleValidate(data.code)" />
+          <Button v-if="data.status === 'pending' || data.status === 'validated'" icon="pi pi-euro" severity="warn" text rounded size="small" title="Payer" @click="openPaymentModal(data.code)" />
+          <Button v-if="data.status === 'paid'" icon="pi pi-file" severity="secondary" text rounded size="small" title="Reçu" @click="handleReceipt(data.code)" />
+          <Button icon="pi pi-trash" severity="danger" text rounded size="small" title="Supprimer" @click="removeAdhesion(data.code)" />
+        </template>
+      </Column>
+    </DataTable>
 
-          </td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
     <PaymentModal
         :visible="isPaymentModalVisible"
         @close="isPaymentModalVisible = false"
         @pay="processPayment"
     />
+    <ConfirmDialog />
   </div>
 </template>
-
-<style scoped>
-.admin-container {
-  padding: 2rem;
-  max-width: 100%;
-}
-
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.filters {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.filters button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.filters button.active {
-  background-color: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.export-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-primary);
-  background-color: var(--color-primary);
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.export-button:hover {
-  background-color: var(--color-hover);
-}
-
-.table-container {
-  overflow-x: auto;
-}
-
-.error-message, .success-message {
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  cursor: pointer;
-}
-
-.error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.success-message {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.adhesions-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-  font-size: 0.9rem;
-}
-
-.adhesions-table th,
-.adhesions-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.adhesions-table th {
-  background-color: #f4f4f4;
-}
-
-.adhesions-table ul {
-  margin: 0;
-  padding-left: 1.2rem;
-}
-
-.status {
-  margin: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-weight: bold;
-  color: white;
-  text-transform: capitalize;
-  white-space: nowrap;
-}
-
-.status-pending {
-  background-color: #ffc107;
-}
-
-.status-validated {
-  background-color: #28a745;
-}
-
-.status-paid {
-  background-color: #007bff;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.action-button {
-  background: none;
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.6rem;
-  margin: 0.1rem;
-  transition: transform 0.2s;
-}
-
-.action-button:hover {
-  transform: scale(1.2);
-}
-</style>

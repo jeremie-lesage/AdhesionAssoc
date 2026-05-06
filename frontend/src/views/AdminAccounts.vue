@@ -1,45 +1,44 @@
 <template>
-  <div>
+  <div style="max-width: 800px; margin: 1.5rem auto">
     <h1>Gérer les comptes administrateurs</h1>
-    <button @click="showAddModal = true">Ajouter un administrateur</button>
+    <Button label="Ajouter un administrateur" icon="pi pi-plus" @click="openAddModal" class="mb-3" />
 
-    <table>
-      <thead>
-        <tr>
-          <th>Nom d'utilisateur</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="admin in admins" :key="admin.id">
-          <td>{{ admin.username }}</td>
-          <td>
-            <button @click="startEdit(admin)">Modifier</button>
-            <button @click="deleteAdmin(admin.id)">Supprimer</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <DataTable :value="admins">
+      <Column field="username" header="Nom d'utilisateur" />
+      <Column header="Actions">
+        <template #body="{ data }">
+          <div style="display: flex; gap: 0.5rem">
+            <Button label="Modifier" icon="pi pi-pencil" severity="info" size="small" @click="startEdit(data)" />
+            <Button label="Supprimer" icon="pi pi-trash" severity="danger" size="small" @click="confirmDelete(data.id)" />
+          </div>
+        </template>
+      </Column>
+    </DataTable>
 
-    <!-- Add/Edit Modal -->
-    <div v-if="showAddModal || editingAdmin">
-      <div class="modal">
-        <h2>{{ editingAdmin ? 'Modifier' : 'Ajouter' }} un administrateur</h2>
-        <form @submit.prevent="saveAdmin">
-          <div>
-            <label for="username">Nom d'utilisateur:</label>
-            <input type="text" id="username" v-model="form.username" required />
-          </div>
-          <div>
-            <label for="password">Mot de passe:</label>
-            <input type="password" id="password" v-model="form.password" :required="!editingAdmin" />
-            <small v-if="editingAdmin">Laissez vide pour ne pas changer</small>
-          </div>
-          <button type="submit">Enregistrer</button>
-          <button @click="cancel">Annuler</button>
-        </form>
-      </div>
-    </div>
+    <ConfirmDialog />
+
+    <Dialog
+      v-model:visible="showModal"
+      :header="editingAdmin ? 'Modifier un administrateur' : 'Ajouter un administrateur'"
+      modal
+      :style="{ width: '400px' }"
+    >
+      <form @submit.prevent="saveAdmin" style="display: flex; flex-direction: column; gap: 1rem">
+        <div>
+          <label for="username" style="display: block; margin-bottom: 0.5rem; font-weight: bold">Nom d'utilisateur :</label>
+          <InputText v-model="form.username" id="username" fluid required />
+        </div>
+        <div>
+          <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: bold">Mot de passe :</label>
+          <Password v-model="form.password" id="password" :feedback="false" fluid :required="!editingAdmin" />
+          <small v-if="editingAdmin">Laissez vide pour ne pas changer</small>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
+          <Button label="Annuler" severity="secondary" @click="cancel" type="button" />
+          <Button label="Enregistrer" type="submit" />
+        </div>
+      </form>
+    </Dialog>
   </div>
 </template>
 
@@ -47,9 +46,18 @@
 import { ref, onMounted } from 'vue';
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin as apiDeleteAdmin } from '@/api';
 import type { AdminUser, AdminUserCreate } from '@/types';
+import { useConfirm } from 'primevue/useconfirm';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
+import ConfirmDialog from 'primevue/confirmdialog';
 
+const confirm = useConfirm();
 const admins = ref<AdminUser[]>([]);
-const showAddModal = ref(false);
+const showModal = ref(false);
 const editingAdmin = ref<AdminUser | null>(null);
 const form = ref<AdminUserCreate>({
   username: '',
@@ -73,7 +81,7 @@ function startEdit(admin: AdminUser) {
   editingAdmin.value = admin;
   form.value.username = admin.username;
   form.value.password = '';
-  showAddModal.value = true;
+  showModal.value = true;
 }
 
 async function saveAdmin() {
@@ -91,35 +99,37 @@ async function saveAdmin() {
   }
 }
 
-async function deleteAdmin(id: number) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer cet administrateur ?")) {
-    try {
-      await apiDeleteAdmin(id);
-      await fetchAdmins();
-    } catch (error) {
-      console.error("Erreur lors de la suppression de l'administrateur:", error);
-      alert("Erreur lors de la suppression.");
-    }
-  }
+function confirmDelete(id: number) {
+  confirm.require({
+    message: 'Êtes-vous sûr de vouloir supprimer cet administrateur ?',
+    header: 'Confirmation de suppression',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Supprimer',
+    rejectLabel: 'Annuler',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await apiDeleteAdmin(id);
+        await fetchAdmins();
+      } catch (error) {
+        console.error("Erreur lors de la suppression de l'administrateur:", error);
+        alert("Erreur lors de la suppression.");
+      }
+    },
+  });
+}
+
+function openAddModal() {
+  editingAdmin.value = null;
+  form.value.username = '';
+  form.value.password = '';
+  showModal.value = true;
 }
 
 function cancel() {
-  showAddModal.value = false;
+  showModal.value = false;
   editingAdmin.value = null;
   form.value.username = '';
   form.value.password = '';
 }
 </script>
-
-<style scoped>
-.modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 20px;
-  border: 1px solid #ccc;
-  z-index: 1000;
-}
-</style>

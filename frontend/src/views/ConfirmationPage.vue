@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="public-view">
     <h2>Confirmation de votre demande d'adhésion</h2>
     <p>Votre demande d'adhésion a été enregistrée avec succès !</p>
     <p>Votre code d'accès unique est : <strong>{{ formStore.lastGeneratedCode }}</strong></p>

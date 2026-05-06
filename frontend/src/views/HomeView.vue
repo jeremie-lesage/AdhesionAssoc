@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page">
+  <div class="home-page public-view">
     <img src="@/assets/images/logo_foyer_rural.png" alt="Logo Foyer Rural de Fauverney" class="logo">
     <h1>Bienvenue au Foyer Rural !</h1>
     <p>Nous sommes ravis de vous compter parmi nous. Pour adhérer à notre association et participer à nos activités, veuillez suivre le processus d'inscription ci-dessous.</p>

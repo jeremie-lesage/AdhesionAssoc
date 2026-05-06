@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="public-view">
     <h2>Charger un formulaire existant</h2>
     <form @submit.prevent="loadForm">
       <div>
@@ -87,7 +87,7 @@ const loadForm = async () => {
 }
 .recent-codes a {
   text-decoration: none;
-  color: #007bff;
+  color: var(--color-primary);
   cursor: pointer;
   font-weight: bold;
 }

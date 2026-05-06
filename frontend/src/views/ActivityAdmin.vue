@@ -5,93 +5,99 @@
     <h3>Activités existantes</h3>
     <p v-if="loading">Chargement des activités...</p>
     <p v-if="error">Erreur lors du chargement des activités: {{ error }}</p>
-    <table v-if="activities.length">
-      <thead>
-        <tr>
-          <th>Nom</th>
-          <th>Description</th>
-          <th>Lieu</th>
-          <th>Tarif Résident</th>
-          <th>Tarif Extérieur</th>
-          <th>Enfant</th>
-          <th>Adulte</th>
-          <th>Inscrits / Places</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="activity in activities" :key="activity.id!">
-          <td>{{ activity.name }}</td>
-          <td>{{ activity.description }}</td>
-          <td>{{ activity.location }}</td>
-          <td>{{ activity.resident_price }}</td>
-          <td>{{ activity.external_price }}</td>
-          <td>{{ activity.is_child_activity ? 'Oui' : 'Non' }}</td>
-          <td>{{ activity.is_adult_activity ? 'Oui' : 'Non' }}</td>
-          <td>
-            <span v-if="activity.max_participants > 0">{{ activity.current_participants }} / {{ activity.max_participants }}</span>
-            <span v-else>Illimité</span>
-          </td>
-          <td>
-            <button @click="startEdit(activity)">Modifier</button>
-            <button @click="deleteActivity(activity.id)" class="delete-button">Supprimer</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <DataTable v-if="activities.length" :value="activities" stripedRows>
+      <Column field="name" header="Nom" sortable />
+      <Column field="description" header="Description" />
+      <Column field="location" header="Lieu" sortable />
+      <Column field="resident_price" header="Tarif Résident" sortable>
+        <template #body="{ data }">{{ data.resident_price }} €</template>
+      </Column>
+      <Column field="external_price" header="Tarif Extérieur" sortable>
+        <template #body="{ data }">{{ data.external_price }} €</template>
+      </Column>
+      <Column field="is_child_activity" header="Enfant" sortable>
+        <template #body="{ data }">{{ data.is_child_activity ? 'Oui' : 'Non' }}</template>
+      </Column>
+      <Column field="is_adult_activity" header="Adulte" sortable>
+        <template #body="{ data }">{{ data.is_adult_activity ? 'Oui' : 'Non' }}</template>
+      </Column>
+      <Column header="Inscrits / Places">
+        <template #body="{ data }">
+          <span v-if="data.max_participants > 0">{{ data.current_participants }} / {{ data.max_participants }}</span>
+          <span v-else>Illimité</span>
+        </template>
+      </Column>
+      <Column header="Actions">
+        <template #body="{ data }">
+          <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="startEdit(data)" />
+          <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="deleteActivity(data.id)" />
+        </template>
+      </Column>
+    </DataTable>
     <p v-else-if="!loading && !error">Aucune activité définie.</p>
 
-
-    <h3>Ajouter/Modifier une activité</h3>
-    <form @submit.prevent="isEditing ? updateActivity() : addActivity()">
-      <input type="hidden" v-model="editingActivity.id">
-      <div class="form-group">
+    <h3>{{ isEditing ? 'Modifier une activité' : 'Ajouter une activité' }}</h3>
+    <form @submit.prevent="isEditing ? updateActivity() : addActivity()" style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px;">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="name">Nom de l'activité:</label>
-        <input type="text" id="name" v-model="editingActivity.name" placeholder="Nom de l'activité" required>
+        <InputText id="name" v-model="editingActivity.name" placeholder="Nom de l'activité" required />
       </div>
-      <div class="form-group">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="description">Description:</label>
-        <textarea id="description" v-model="editingActivity.description" placeholder="Description"></textarea>
+        <Textarea id="description" v-model="editingActivity.description" placeholder="Description" rows="3" />
       </div>
-      <div class="form-group">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="location">Lieu (École ou Foyer):</label>
-        <input type="text" id="location" v-model="editingActivity.location" placeholder="Lieu (École ou Foyer)">
+        <InputText id="location" v-model="editingActivity.location" placeholder="Lieu (École ou Foyer)" />
       </div>
-      <div class="form-group">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="resident_price">Tarif Résident:</label>
-        <input type="number" id="resident_price" v-model.number="editingActivity.resident_price" placeholder="Tarif Résident" step="0.01">
+        <InputNumber id="resident_price" v-model="editingActivity.resident_price" mode="currency" currency="EUR" locale="fr-FR" />
       </div>
-      <div class="form-group">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="external_price">Tarif Extérieur:</label>
-        <input type="number" id="external_price" v-model.number="editingActivity.external_price" placeholder="Tarif Extérieur" step="0.01">
+        <InputNumber id="external_price" v-model="editingActivity.external_price" mode="currency" currency="EUR" locale="fr-FR" />
       </div>
-      <div class="form-group">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <label for="max_participants">Nombre de places disponibles:</label>
-        <input type="number" id="max_participants" v-model.number="editingActivity.max_participants" placeholder="Nombre de places" min="0">
+        <InputNumber id="max_participants" v-model="editingActivity.max_participants" :min="0" />
       </div>
-      <div class="form-group checkbox-group">
-        <label>
-          <input type="checkbox" v-model="editingActivity.is_child_activity"> Activité Enfant
-        </label>
-        <label>
-          <input type="checkbox" v-model="editingActivity.is_adult_activity"> Activité Adulte
-        </label>
+      <div style="display: flex; gap: 2rem; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <Checkbox inputId="is_child" v-model="editingActivity.is_child_activity" binary />
+          <label for="is_child">Activité Enfant</label>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <Checkbox inputId="is_adult" v-model="editingActivity.is_adult_activity" binary />
+          <label for="is_adult">Activité Adulte</label>
+        </div>
       </div>
-      <div class="form-actions">
-        <button type="submit">{{ isEditing ? 'Modifier' : 'Ajouter' }}</button>
-        <button type="button" @click="cancelEdit" v-if="isEditing">Annuler</button>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <Button :label="isEditing ? 'Modifier' : 'Ajouter'" :icon="isEditing ? 'pi pi-pencil' : 'pi pi-plus'" type="submit" />
+        <Button v-if="isEditing" label="Annuler" icon="pi pi-times" severity="secondary" type="button" @click="cancelEdit" />
       </div>
     </form>
 
+    <ConfirmDialog />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, type Ref } from 'vue';
 import api from '@/api';
-import {useRouter} from "vue-router";
+import { useRouter } from 'vue-router';
+import { useConfirm } from 'primevue/useconfirm';
 import type { Activity } from '@/types';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
+import InputNumber from 'primevue/inputnumber';
+import Checkbox from 'primevue/checkbox';
+import Button from 'primevue/button';
+import ConfirmDialog from 'primevue/confirmdialog';
 
+const confirm = useConfirm();
 const activities = ref<Activity[]>([]);
 const editingActivity: Ref<Activity> = ref({
   id: null,
@@ -178,235 +184,27 @@ const resetForm = () => {
   isEditing.value = false;
 };
 
-const deleteActivity = async (id: number | null) => {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer cette activité ?')) return;
-  try {
-    await api.delete(`/api/activities/${id}`);
-    fetchActivities(); // Recharger la liste
-  } catch (err: any) {
-    alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);
-    if (err.response && err.response.status === 401) {
-      router.push({name: 'admin-login'});
-    }
-  }
+const deleteActivity = (id: number | null) => {
+  confirm.require({
+    message: 'Êtes-vous sûr de vouloir supprimer cette activité ?',
+    header: 'Confirmation',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Supprimer',
+    rejectLabel: 'Annuler',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await api.delete(`/api/activities/${id}`);
+        fetchActivities();
+      } catch (err: any) {
+        alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);
+        if (err.response && err.response.status === 401) {
+          router.push({name: 'admin-login'});
+        }
+      }
+    },
+  });
 }
 
 onMounted(fetchActivities);
 </script>
-
-<style scoped>
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 20px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background-color: var(--color-background-soft);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: var(--color-heading);
-}
-
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group textarea {
-  padding: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 1rem;
-  width: 100%;
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.checkbox-group {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-.checkbox-group label {
-  display: flex;
-  align-items: center;
-  font-weight: normal;
-}
-
-.checkbox-group input[type="checkbox"] {
-  margin-right: 8px;
-  transform: scale(1.2);
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-form button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease;
-}
-
-form button[type="submit"] {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-form button[type="submit"]:hover {
-  background-color: var(--color-primary-dark);
-}
-
-form button[type="button"] {
-  background-color: var(--color-secondary);
-  color: white;
-}
-
-form button[type="button"]:hover {
-  background-color: var(--color-secondary-dark);
-}
-
-/* Table styles */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-table th,
-table td {
-  border: 1px solid var(--color-border);
-  padding: 10px;
-  text-align: left;
-}
-
-table th {
-  background-color: var(--color-background-soft);
-  font-weight: bold;
-}
-
-table tr:nth-child(even) {
-  background-color: var(--color-background-mute);
-}
-
-table button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  margin-right: 5px;
-  transition: background-color 0.3s ease;
-}
-
-table button:hover {
-  opacity: 0.9;
-}
-
-table button:first-of-type {
-  background-color: #3498db; /* Blue for Edit */
-  color: white;
-}
-
-.delete-button {
-  background-color: #e74c3c; /* Red for Delete */
-  color: white;
-}
-
-.delete-button:hover {
-  background-color: #c0392b;
-}
-
-/* General spacing */
-h2,
-h3 {
-  margin-top: 25px;
-  margin-bottom: 15px;
-  color: var(--color-heading);
-}
-
-p {
-  margin-bottom: 10px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  form {
-    padding: 15px;
-  }
-
-  .checkbox-group {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  table,
-  thead,
-  tbody,
-  th,
-  td,
-  tr {
-    display: block;
-  }
-
-  thead tr {
-    position: absolute;
-    top: -9999px;
-    left: -9999px;
-  }
-
-  tr {
-    border: 1px solid var(--color-border);
-    margin-bottom: 10px;
-  }
-
-  td {
-    border: none;
-    border-bottom: 1px solid var(--color-border);
-    position: relative;
-    padding-left: 50%;
-    text-align: right;
-  }
-
-  td:before {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    width: 45%;
-    padding-right: 10px;
-    white-space: nowrap;
-    text-align: left;
-    font-weight: bold;
-  }
-
-  /* Label the data */
-  td:nth-of-type(1):before { content: "Nom:"; }
-  td:nth-of-type(2):before { content: "Description:"; }
-  td:nth-of-type(3):before { content: "Lieu:"; }
-  td:nth-of-type(4):before { content: "Tarif Résident:"; }
-  td:nth-of-type(5):before { content: "Tarif Extérieur:"; }
-  td:nth-of-type(6):before { content: "Enfant:"; }
-  td:nth-of-type(7):before { content: "Adulte:"; }
-  td:nth-of-type(8):before { content: "Actions:"; }
-}
-</style>
