@@ -4,15 +4,14 @@ import os
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
-# Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models import Base, Activity, Adhesion
-from schemas import AdhesionCreate
+from schemas import AdhesionCreate, ActivityCreate, AdminUserCreate
 import crud
 
-# Use an in-memory SQLite database for testing
 DATABASE_URL = "sqlite:///:memory:"
+
 
 @pytest.fixture(scope="function")
 def db_session():
@@ -26,101 +25,283 @@ def db_session():
         session.close()
         Base.metadata.drop_all(engine)
 
-def test_create_adhesion_with_activities(db_session):
-    # 1. Create some activities to link to
-    activity1 = Activity(name="Yoga", description="Cours de Yoga", resident_price=100, external_price=120)
-    activity2 = Activity(name="Danse", description="Cours de Danse", resident_price=110, external_price=130)
-    db_session.add_all([activity1, activity2])
+
+def _make_activity(db_session, name="Yoga", resident_price=100, external_price=120, max_participants=0):
+    a = Activity(name=name, description=f"Cours de {name}", resident_price=resident_price,
+                 external_price=external_price, max_participants=max_participants)
+    db_session.add(a)
     db_session.commit()
-    db_session.refresh(activity1)
-    db_session.refresh(activity2)
+    db_session.refresh(a)
+    return a
 
-    # 2. Prepare the adhesion data with activity IDs
-    adhesion_data = AdhesionCreate(
-        email="test.adhesion@example.com",
-        nom="Test",
-        prenom="Adherent",
-        date_naissance="2000-01-01",
-        ville="Testville",
-        activities=[activity1.id, activity2.id]
-    )
 
-    # 3. Call the function to be tested
-    created_adhesion_pydantic = crud.create_adhesion(db=db_session, adhesion=adhesion_data)
-    
-    # 4. Verify the result from the database
-    # Use the Pydantic model's ID to fetch the record
-    db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == created_adhesion_pydantic.id).one_or_none()
+def _make_adhesion(db_session, email="test@example.com", nom="Dupont", prenom="Jean",
+                   ville="Fauverney", activities=None):
+    data = AdhesionCreate(email=email, nom=nom, prenom=prenom, ville=ville,
+                          activities=activities or [])
+    return crud.create_adhesion(db=db_session, adhesion=data)
 
-    assert db_adhesion is not None
-    assert db_adhesion.email == "test.adhesion@example.com"
-    
-    # THE CRITICAL TEST: Check if the activities were associated
-    assert len(db_adhesion.activities) == 2
-    
-    activity_names_in_db = sorted([act.name for act in db_adhesion.activities])
-    assert activity_names_in_db == ["Danse", "Yoga"]
 
-def test_update_adhesion_with_activities(db_session):
-    # 1. Create an initial adhesion with one activity
-    activity1 = Activity(name="Yoga", description="Cours de Yoga")
-    activity2 = Activity(name="Danse", description="Cours de Danse")
-    activity3 = Activity(name="Musique", description="Cours de Musique")
-    db_session.add_all([activity1, activity2, activity3])
-    db_session.commit()
+# ─── Adhesion CRUD ───────────────────────────────────────────────
 
-    initial_adhesion_data = AdhesionCreate(
-        email="update.test@example.com",
-        nom="Update",
-        prenom="Test",
-        activities=[activity1.id]
-    )
-    created_adhesion = crud.create_adhesion(db=db_session, adhesion=initial_adhesion_data)
-    
-    # 2. Prepare the update data, changing the activities
-    update_adhesion_data = AdhesionCreate(
-        email="update.test@example.com", # email is the same
-        nom="UpdatedNom", # name is changed
-        activities=[activity2.id, activity3.id] # activities are changed
-    )
 
-    # 3. Call the update function
-    updated_adhesion_pydantic = crud.update_adhesion(db=db_session, code=created_adhesion.code, adhesion=update_adhesion_data)
+class TestCreateAdhesion:
+    def test_create_with_activities(self, db_session):
+        a1 = _make_activity(db_session, "Yoga")
+        a2 = _make_activity(db_session, "Danse")
 
-    # 4. Verify the result from the database
-    db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == updated_adhesion_pydantic.id).one()
+        result = _make_adhesion(db_session, activities=[a1.id, a2.id])
 
-    assert db_adhesion is not None
-    assert db_adhesion.nom == "UpdatedNom"
-    assert len(db_adhesion.activities) == 2
-    
-    activity_names_in_db = sorted([act.name for act in db_adhesion.activities])
-    assert activity_names_in_db == ["Danse", "Musique"]
+        assert result.email == "test@example.com"
+        assert result.code is not None
+        assert len(result.code) == 12
+        assert result.status == "pending"
+        assert len(result.activities) == 2
 
-def test_update_adhesion_without_activities_preserves_them(db_session):
-    """Updating fields without sending activities should not clear existing ones."""
-    activity1 = Activity(name="Yoga", description="Cours de Yoga")
-    activity2 = Activity(name="Danse", description="Cours de Danse")
-    db_session.add_all([activity1, activity2])
-    db_session.commit()
+    def test_create_without_activities(self, db_session):
+        result = _make_adhesion(db_session)
+        assert result.activities == []
+        assert result.status == "pending"
 
-    initial = AdhesionCreate(
-        email="preserve@example.com",
-        nom="Original",
-        prenom="Test",
-        activities=[activity1.id, activity2.id]
-    )
-    created = crud.create_adhesion(db=db_session, adhesion=initial)
+    def test_create_generates_unique_codes(self, db_session):
+        a1 = _make_adhesion(db_session, email="a@example.com")
+        a2 = _make_adhesion(db_session, email="b@example.com")
+        assert a1.code != a2.code
 
-    update_without_activities = AdhesionCreate.model_construct(
-        email="preserve@example.com",
-        nom="Modified",
-    )
+    def test_create_rejects_full_activity(self, db_session):
+        a = _make_activity(db_session, "Yoga", max_participants=1)
+        _make_adhesion(db_session, email="first@example.com", activities=[a.id])
 
-    updated = crud.update_adhesion(db=db_session, code=created.code, adhesion=update_without_activities)
+        with pytest.raises(ValueError, match="maximum number of participants"):
+            _make_adhesion(db_session, email="second@example.com", activities=[a.id])
 
-    db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == updated.id).one()
-    assert db_adhesion.nom == "Modified"
-    assert len(db_adhesion.activities) == 2, "Activities should be preserved when not included in update"
-    activity_names = sorted([a.name for a in db_adhesion.activities])
-    assert activity_names == ["Danse", "Yoga"]
+
+class TestGetAdhesion:
+    def test_get_by_code(self, db_session):
+        created = _make_adhesion(db_session)
+        result = crud.get_adhesion_by_code(db_session, created.code)
+        assert result is not None
+        assert result.id == created.id
+
+    def test_get_by_code_not_found(self, db_session):
+        result = crud.get_adhesion_by_code(db_session, "INEXISTANT")
+        assert result is None
+
+    def test_get_all(self, db_session):
+        _make_adhesion(db_session, email="a@example.com")
+        _make_adhesion(db_session, email="b@example.com")
+        result = crud.get_adhesions(db_session)
+        assert len(result) == 2
+
+
+class TestUpdateAdhesion:
+    def test_update_fields_and_activities(self, db_session):
+        a1 = _make_activity(db_session, "Yoga")
+        a2 = _make_activity(db_session, "Danse")
+        created = _make_adhesion(db_session, activities=[a1.id])
+
+        update = AdhesionCreate(email="test@example.com", nom="Modifié", activities=[a2.id])
+        result = crud.update_adhesion(db_session, created.code, update)
+
+        assert result.nom == "Modifié"
+        assert len(result.activities) == 1
+        assert result.activities[0].name == "Danse"
+
+    def test_update_without_activities_preserves_them(self, db_session):
+        a1 = _make_activity(db_session, "Yoga")
+        a2 = _make_activity(db_session, "Danse")
+        created = _make_adhesion(db_session, activities=[a1.id, a2.id])
+
+        update = AdhesionCreate.model_construct(email="test@example.com", nom="Modifié")
+        result = crud.update_adhesion(db_session, created.code, update)
+
+        assert result.nom == "Modifié"
+        assert len(result.activities) == 2
+
+    def test_update_not_found(self, db_session):
+        update = AdhesionCreate(email="x@example.com")
+        result = crud.update_adhesion(db_session, "INEXISTANT", update)
+        assert result is None
+
+    def test_update_validated_adhesion_raises(self, db_session):
+        created = _make_adhesion(db_session)
+        db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == created.id).one()
+        db_adhesion.status = "validated"
+        db_session.commit()
+
+        update = AdhesionCreate(email="test@example.com", nom="Nouveau")
+        with pytest.raises(ValueError, match="Cannot update a validated adhesion"):
+            crud.update_adhesion(db_session, created.code, update)
+
+
+class TestUpdatePayment:
+    def test_mark_as_paid(self, db_session):
+        created = _make_adhesion(db_session)
+        result = crud.update_adhesion_payment(db_session, created.code, "cheque")
+
+        assert result.status == "paid"
+        assert result.payment_method == "cheque"
+
+    def test_payment_not_found(self, db_session):
+        result = crud.update_adhesion_payment(db_session, "INEXISTANT", "cheque")
+        assert result is None
+
+
+class TestDeleteAdhesion:
+    def test_delete_existing(self, db_session):
+        created = _make_adhesion(db_session)
+        assert crud.delete_adhesion(db_session, created.code) is True
+        assert crud.get_adhesion_by_code(db_session, created.code) is None
+
+    def test_delete_not_found(self, db_session):
+        assert crud.delete_adhesion(db_session, "INEXISTANT") is False
+
+
+# ─── Activity CRUD ───────────────────────────────────────────────
+
+
+class TestActivityCrud:
+    def test_create_activity(self, db_session):
+        data = ActivityCreate(name="Peinture", description="Atelier peinture",
+                              resident_price=50, external_price=70)
+        result = crud.create_activity(db_session, data)
+        assert result.id is not None
+        assert result.name == "Peinture"
+
+    def test_get_activities(self, db_session):
+        _make_activity(db_session, "Yoga")
+        _make_activity(db_session, "Danse")
+        result = crud.get_activities(db_session)
+        assert len(result) == 2
+
+    def test_update_activity(self, db_session):
+        a = _make_activity(db_session, "Yoga", resident_price=100)
+        update = ActivityCreate(name="Yoga avancé", resident_price=150)
+        result = crud.update_activity(db_session, a.id, update)
+        assert result.name == "Yoga avancé"
+        assert result.resident_price == 150
+
+    def test_update_activity_not_found(self, db_session):
+        update = ActivityCreate(name="X")
+        result = crud.update_activity(db_session, 999, update)
+        assert result is None
+
+    def test_delete_activity(self, db_session):
+        a = _make_activity(db_session, "Yoga")
+        assert crud.delete_activity(db_session, a.id) is True
+        assert crud.delete_activity(db_session, a.id) is False
+
+    def test_get_adherents_by_activity(self, db_session):
+        a = _make_activity(db_session, "Yoga")
+        _make_adhesion(db_session, email="a@example.com", activities=[a.id])
+        _make_adhesion(db_session, email="b@example.com", activities=[a.id])
+
+        result = crud.get_adherents_by_activity(db_session, a.id)
+        assert len(result) == 2
+
+    def test_get_adherents_by_activity_not_found(self, db_session):
+        with pytest.raises(ValueError, match="Activity not found"):
+            crud.get_adherents_by_activity(db_session, 999)
+
+
+# ─── Admin CRUD ──────────────────────────────────────────────────
+
+
+class TestAdminCrud:
+    def test_create_and_get_admin(self, db_session):
+        admin = AdminUserCreate(username="admin", password="hashed_pw")
+        result = crud.create_admin(db_session, admin)
+        assert result.username == "admin"
+        assert result.id is not None
+
+    def test_get_admin_by_username(self, db_session):
+        crud.create_admin(db_session, AdminUserCreate(username="admin", password="pw"))
+        result = crud.get_admin_by_username(db_session, "admin")
+        assert result is not None
+        assert result.username == "admin"
+
+    def test_get_admin_by_username_not_found(self, db_session):
+        result = crud.get_admin_by_username(db_session, "inexistant")
+        assert result is None
+
+    def test_get_admins(self, db_session):
+        crud.create_admin(db_session, AdminUserCreate(username="admin1", password="pw"))
+        crud.create_admin(db_session, AdminUserCreate(username="admin2", password="pw"))
+        result = crud.get_admins(db_session)
+        assert len(result) == 2
+
+    def test_update_admin(self, db_session):
+        created = crud.create_admin(db_session, AdminUserCreate(username="old", password="pw"))
+        update = AdminUserCreate(username="new", password="new_pw")
+        result = crud.update_admin(db_session, created.id, update)
+        assert result.username == "new"
+
+    def test_update_admin_not_found(self, db_session):
+        update = AdminUserCreate(username="x", password="pw")
+        result = crud.update_admin(db_session, 999, update)
+        assert result is None
+
+    def test_delete_admin(self, db_session):
+        created = crud.create_admin(db_session, AdminUserCreate(username="admin", password="pw"))
+        assert crud.delete_admin(db_session, created.id) is True
+        assert crud.delete_admin(db_session, created.id) is False
+
+
+# ─── Contacts & Family ──────────────────────────────────────────
+
+
+class TestContactsAndFamily:
+    def test_contacts_status_pending(self, db_session):
+        _make_adhesion(db_session, email="a@example.com")
+        result = crud.get_contacts_with_status(db_session)
+        assert len(result) == 1
+        assert result[0].status == "pending"
+
+    def test_contacts_status_paid(self, db_session):
+        created = _make_adhesion(db_session, email="a@example.com")
+        crud.update_adhesion_payment(db_session, created.code, "cb")
+
+        result = crud.get_contacts_with_status(db_session)
+        assert result[0].status == "payé"
+
+    def test_contacts_status_mixed(self, db_session):
+        a1 = _make_adhesion(db_session, email="famille@example.com", nom="Parent")
+        _make_adhesion(db_session, email="famille@example.com", nom="Enfant")
+        crud.update_adhesion_payment(db_session, a1.code, "cb")
+
+        result = crud.get_contacts_with_status(db_session)
+        assert len(result) == 1
+        assert result[0].status == "pending"
+
+    def test_family_details(self, db_session):
+        a = _make_activity(db_session, "Yoga", resident_price=100, external_price=120)
+        _make_adhesion(db_session, email="famille@example.com", nom="Parent",
+                       ville="Fauverney", activities=[a.id])
+        _make_adhesion(db_session, email="famille@example.com", nom="Enfant",
+                       ville="Fauverney", activities=[a.id])
+
+        result = crud.get_family_details_by_email(db_session, "famille@example.com")
+        assert result is not None
+        assert len(result.adherents) == 2
+        assert result.total_due == 200  # 2 x 100 (résident)
+
+    def test_family_details_external_pricing(self, db_session):
+        a = _make_activity(db_session, "Yoga", resident_price=100, external_price=150)
+        _make_adhesion(db_session, email="ext@example.com", nom="Externe",
+                       ville="Dijon", activities=[a.id])
+
+        result = crud.get_family_details_by_email(db_session, "ext@example.com")
+        assert result.total_due == 150
+
+    def test_family_details_not_found(self, db_session):
+        result = crud.get_family_details_by_email(db_session, "inexistant@example.com")
+        assert result is None
+
+    def test_family_details_with_adhesion_amount(self, db_session):
+        a = _make_activity(db_session, "Yoga", resident_price=100, external_price=120)
+        data = AdhesionCreate(email="cotis@example.com", nom="Test", ville="Fauverney",
+                              adhesion_amount=15, activities=[a.id])
+        crud.create_adhesion(db_session, data)
+
+        result = crud.get_family_details_by_email(db_session, "cotis@example.com")
+        assert result.total_due == 115  # 15 (cotisation) + 100 (activité résident)
