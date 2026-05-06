@@ -29,7 +29,7 @@ import type { Adhesion } from '@/types';
 
 const router = useRouter();
 const code = ref('');
-const recentAdhesions = ref<Partial<Adhesion>[]>([]);
+const recentAdhesions = ref<{ code: string; nom: string; prenom: string }[]>([]);
 
 onMounted(async () => {
   const codesJson = localStorage.getItem('recentCodes');
@@ -50,7 +50,7 @@ onMounted(async () => {
     });
 
     const results = await Promise.all(adhesionPromises);
-    recentAdhesions.value = results.filter(Boolean) as Partial<Adhesion>[];
+    recentAdhesions.value = results.filter(Boolean) as typeof recentAdhesions.value;
   }
 });
 
