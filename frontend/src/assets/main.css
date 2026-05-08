@@ -21,13 +21,20 @@ body {
 }
 
 #app {
+  text-align: left;
+}
+
+#app.no-shell {
+  min-height: 100vh;
+}
+
+#app:not(.no-shell) {
   max-width: 960px;
   margin: 0.5rem auto;
   padding: 1rem;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  text-align: left;
 }
 
 h1, h2, h3 {

@@ -2,10 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import NewAdhesionForm from '../views/NewAdhesionForm.vue'
 import LoadForm from '../views/LoadForm.vue'
-import AdminView from '../views/AdminView.vue'
 import ConfirmationPage from '../views/ConfirmationPage.vue'
-import ActivityAdmin from '../views/ActivityAdmin.vue'
 import AdminLogin from '../views/AdminLogin.vue'
+import AdminLayout from '../layouts/AdminLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,57 +25,57 @@ const router = createRouter({
       component: LoadForm
     },
     {
+      path: '/confirmation',
+      name: 'confirmation',
+      component: ConfirmationPage
+    },
+    {
       path: '/admin/login',
       name: 'admin-login',
       component: AdminLogin
     },
     {
       path: '/admin',
-      name: 'admin',
-      component: AdminView,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin/adhesions',
-      name: 'admin-adhesions',
-      component: () => import('../views/AdhesionAdminView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin/activities',
-      name: 'admin-activities',
-      component: ActivityAdmin,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/confirmation',
-      name: 'confirmation',
-      component: ConfirmationPage
-    },
-    {
-      path: '/admin/adherents-by-activity',
-      name: 'admin-adherents-by-activity',
-      component: () => import('../views/AdherentByActivity.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin/accounts',
-      name: 'admin-accounts',
-      component: () => import('../views/AdminAccounts.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin/contacts',
-      name: 'ContactsList',
-      component: () => import('../views/admin/ContactsListView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin/contacts/:email',
-      name: 'FamilyDetails',
-      component: () => import('../views/admin/FamilyDetailsView.vue'),
+      component: AdminLayout,
       meta: { requiresAuth: true },
-      props: true
+      children: [
+        {
+          path: '',
+          name: 'admin',
+          redirect: '/admin/adhesions'
+        },
+        {
+          path: 'adhesions',
+          name: 'admin-adhesions',
+          component: () => import('../views/AdhesionAdminView.vue')
+        },
+        {
+          path: 'activities',
+          name: 'admin-activities',
+          component: () => import('../views/ActivityAdmin.vue')
+        },
+        {
+          path: 'adherents-by-activity',
+          name: 'admin-adherents-by-activity',
+          component: () => import('../views/AdherentByActivity.vue')
+        },
+        {
+          path: 'accounts',
+          name: 'admin-accounts',
+          component: () => import('../views/AdminAccounts.vue')
+        },
+        {
+          path: 'contacts',
+          name: 'ContactsList',
+          component: () => import('../views/admin/ContactsListView.vue')
+        },
+        {
+          path: 'contacts/:email',
+          name: 'FamilyDetails',
+          component: () => import('../views/admin/FamilyDetailsView.vue'),
+          props: true
+        }
+      ]
     }
   ]
 })
