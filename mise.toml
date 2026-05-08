@@ -4,9 +4,8 @@ uv = "latest"
 node = "latest"
 
 [env]
-# Use the project name derived from the current directory
 PROJECT_NAME = "{{ config_root | basename }}"
-
+DATABASE_URL = "postgresql://foyer_dev:foyer_dev@localhost:5432/foyer_rural_db"
 
 [tasks.install]
 description = "Install dependencies"
@@ -14,9 +13,38 @@ alias = "i"
 dir = "backend"
 run = "uv sync"
 
-[tasks.serve]
-description = "Run local server"
-alias = "s"
-dir = "backend"
-run = "uv run uvicorn main:app --host 0.0.0.0 --port 8000"
+[tasks."db:start"]
+description = "Start PostgreSQL dev container"
+run = """
+if docker ps --format '{{"{{"}}.Names{{"}}"}}' | grep -q '^foyer-dev-db$'; then
+  echo "PostgreSQL dev container already running"
+else
+  docker run -d --name foyer-dev-db \
+    -e POSTGRES_USER=foyer_dev \
+    -e POSTGRES_PASSWORD=foyer_dev \
+    -e POSTGRES_DB=foyer_rural_db \
+    -p 5432:5432 \
+    -v foyer-dev-pgdata:/var/lib/postgresql/data \
+    postgres:16-alpine
+  echo "PostgreSQL dev container started on port 5432"
+fi
+"""
 
+[tasks."db:stop"]
+description = "Stop PostgreSQL dev container"
+run = "docker stop foyer-dev-db && docker rm foyer-dev-db"
+
+[tasks."db:reset"]
+description = "Reset PostgreSQL dev data"
+depends = ["db:stop"]
+run = """
+docker volume rm foyer-dev-pgdata 2>/dev/null || true
+echo "Dev database volume removed"
+"""
+
+[tasks.serve]
+description = "Start PostgreSQL + backend server"
+alias = "s"
+depends = ["db:start"]
+dir = "backend"
+run = "uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
