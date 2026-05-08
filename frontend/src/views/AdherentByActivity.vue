@@ -1,123 +1,146 @@
 <template>
   <div>
     <h2>Adhérents par Activité</h2>
-    <Button label="Retour à l'Administration" icon="pi pi-arrow-left" severity="secondary" as="router-link" to="/admin" />
 
-    <div style="display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0;">
-      <label for="activity-select">Sélectionner une activité:</label>
-      <Select
-        id="activity-select"
-        v-model="selectedActivityId"
-        :options="activities"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Choisir une activité"
-        fluid
-        @change="fetchAdherentsForActivity"
-      />
-    </div>
+    <p v-if="loadingActivities">Chargement des activités...</p>
 
-    <p v-if="loading">Chargement des adhérents...</p>
-    <p v-if="error">Erreur: {{ error }}</p>
+    <Tabs v-if="activities.length" :value="activeTab" @update:value="onTabChange">
+      <TabList>
+        <Tab v-for="activity in activities" :key="activity.id!" :value="String(activity.id)">
+          {{ activity.name }}
+        </Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel v-for="activity in activities" :key="activity.id!" :value="String(activity.id)">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+              <span v-if="activity.location" style="color: var(--p-surface-500);">{{ activity.location }}</span>
+              <span v-if="activity.max_participants > 0" style="margin-left: 1rem;">
+                — {{ adherents.length }} / {{ activity.max_participants }} inscrits
+              </span>
+              <span v-else style="margin-left: 1rem;">— {{ adherents.length }} inscrits</span>
+            </div>
+            <Button label="Exporter CSV" icon="pi pi-download" severity="secondary" size="small" :disabled="!adherents.length" @click="exportToCsv(activity)" />
+          </div>
 
-    <div v-if="selectedActivityId && !loading && !error">
-      <h3>Adhérents pour l'activité: {{ selectedActivityName }}</h3>
-      <p>Nombre total d'adhérents: {{ adherents.length }}</p>
-      <Button label="Exporter en CSV" icon="pi pi-download" severity="success" :disabled="!adherents.length" @click="exportToCsv" style="margin-bottom: 1rem;" />
+          <p v-if="loadingAdherents">Chargement...</p>
 
-      <DataTable v-if="adherents.length" :value="adherents" stripedRows>
-        <Column field="nom" header="Nom" sortable />
-        <Column field="prenom" header="Prénom" sortable />
-        <Column field="email" header="Email" sortable />
-        <Column field="status" header="Statut" sortable />
-      </DataTable>
-      <p v-else>Aucun adhérent pour cette activité.</p>
-    </div>
+          <DataTable v-else-if="adherents.length" :value="adherents" stripedRows sortMode="multiple" removableSort>
+            <Column field="nom" header="Nom" sortable />
+            <Column field="prenom" header="Prénom" sortable />
+            <Column field="email" header="Email" sortable />
+            <Column field="ville" header="Ville" sortable />
+            <Column field="status" header="Statut" sortable>
+              <template #body="{ data }">
+                <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
+              </template>
+            </Column>
+          </DataTable>
+          <p v-else style="color: var(--p-surface-400); font-style: italic;">Aucun inscrit pour cette activité.</p>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import api from '@/api';
 import { useRouter } from 'vue-router';
 import type { Activity, Adhesion } from '@/types';
-import Button from 'primevue/button';
-import Select from 'primevue/select';
+import Tabs from 'primevue/tabs';
+import TabList from 'primevue/tablist';
+import Tab from 'primevue/tab';
+import TabPanels from 'primevue/tabpanels';
+import TabPanel from 'primevue/tabpanel';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Tag from 'primevue/tag';
 
 const activities = ref<Activity[]>([]);
-const selectedActivityId = ref<number | string>('');
 const adherents = ref<Adhesion[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
+const activeTab = ref('');
+const loadingActivities = ref(true);
+const loadingAdherents = ref(false);
 const router = useRouter();
 
-const selectedActivityName = computed(() => {
-  const activity = activities.value.find((act: Activity) => act.id === selectedActivityId.value);
-  return activity ? activity.name : '';
-});
-
-const fetchActivities = async () => {
-  try {
-    const response = await api.get('/api/activities');
-    activities.value = response.data;
-  } catch (err: any) {
-    if (err.response && err.response.status === 401) {
-      await router.push({name: 'admin-login'});
-    } else {
-      error.value = err.message;
-    }
+const statusLabel = (status: string) => {
+  switch (status) {
+    case 'pending': return 'En attente';
+    case 'validated': return 'Validé';
+    case 'paid': return 'Payé';
+    default: return status;
   }
 };
 
-const fetchAdherentsForActivity = async () => {
-  if (!selectedActivityId.value) {
-    adherents.value = [];
-    return;
+const statusSeverity = (status: string) => {
+  switch (status) {
+    case 'pending': return 'warn';
+    case 'validated': return 'success';
+    case 'paid': return 'info';
+    default: return 'secondary';
   }
-  loading.value = true;
-  error.value = null;
+};
+
+const onTabChange = (value: string | number) => {
+  activeTab.value = String(value);
+  fetchAdherents(Number(value));
+};
+
+const fetchAdherents = async (activityId: number) => {
+  loadingAdherents.value = true;
   try {
-    const response = await api.get(`/api/activities/${selectedActivityId.value}/adherents`);
-    adherents.value = response.data;
+    const res = await api.get(`/api/activities/${activityId}/adherents`);
+    adherents.value = res.data;
   } catch (err: any) {
-    if (err.response && err.response.status === 401) {
+    if (err.response?.status === 401) {
       router.push({ name: 'admin-login' });
-    } else {
-      error.value = err.message;
     }
+    adherents.value = [];
   } finally {
-    loading.value = false;
+    loadingAdherents.value = false;
   }
 };
 
-const exportToCsv = () => {
+const exportToCsv = (activity: Activity) => {
   if (!adherents.value.length) return;
 
-  const headers = ["Nom", "Prénom", "Email", "Statut"];
-  const rows = adherents.value.map(adherent => [
-    adherent.nom,
-    adherent.prenom,
-    adherent.email,
-    adherent.status
-  ]);
+  const headers = ['Nom', 'Prénom', 'Email', 'Ville', 'Statut'];
+  const rows = adherents.value.map(a => [a.nom, a.prenom, a.email, a.ville, a.status]);
 
-  let csvContent = headers.join(";") + "\n";
-  rows.forEach(row => {
-    csvContent += row.join(";") + "\n";
-  });
+  let csv = headers.join(';') + '\n';
+  rows.forEach(row => { csv += row.join(';') + '\n'; });
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `adherents_${selectedActivityName.value.replace(/\s/g, '_')}.csv`);
+  link.setAttribute('download', `adherents_${activity.name.replace(/\s/g, '_')}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 };
 
-onMounted(() => {
-  fetchActivities();
+onMounted(async () => {
+  try {
+    const res = await api.get('/api/activities');
+    activities.value = res.data;
+    if (activities.value.length) {
+      activeTab.value = String(activities.value[0].id);
+      fetchAdherents(activities.value[0].id!);
+    }
+  } catch (err: any) {
+    if (err.response?.status === 401) {
+      router.push({ name: 'admin-login' });
+    }
+  } finally {
+    loadingActivities.value = false;
+  }
 });
 </script>
+
+<style scoped>
+:deep(.p-tablist-tab-list) {
+  flex-wrap: wrap;
+}
+</style>
