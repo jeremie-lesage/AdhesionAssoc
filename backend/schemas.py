@@ -100,6 +100,7 @@ class AdhesionBase(BaseModel):
     :type payment_method: Optional[str]
     """
     email: EmailStr
+    telephone: Optional[str] = None
     nom: Optional[str] = None
     prenom: Optional[str] = None
     date_naissance: Optional[str] = None

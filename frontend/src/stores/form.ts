@@ -6,6 +6,7 @@ export const useFormStore = defineStore('form', {
     step: 1,
     formData: {
       email: '',
+      telephone: '',
       nom: '',
       prenom: '',
       date_naissance: '',
@@ -36,6 +37,7 @@ export const useFormStore = defineStore('form', {
       this.step = 1;
       this.formData = {
         email: '',
+        telephone: '',
         nom: '',
         prenom: '',
         date_naissance: '',

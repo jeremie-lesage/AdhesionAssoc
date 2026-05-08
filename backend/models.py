@@ -17,6 +17,7 @@ class Adhesion(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True)
     email = Column(String, index=True)
+    telephone = Column(String, nullable=True)
     nom = Column(String)
     prenom = Column(String)
     date_naissance = Column(String)

@@ -102,13 +102,14 @@ const getStatusLabel = (status: string) => {
 
 const exportToCSV = () => {
   const headers = [
-    "Nom", "Prénom", "Email", "Ville", "Code", "Statut",
+    "Nom", "Prénom", "Email", "Téléphone", "Ville", "Code", "Statut",
     "Montant Adhésion", "Activités", "Coût Total"
   ];
   const rows = filteredAdhesions.value.map(adhesion => [
     adhesion.nom,
     adhesion.prenom,
     adhesion.email,
+    adhesion.telephone || '',
     adhesion.ville,
     adhesion.code,
     adhesion.status,
@@ -217,6 +218,7 @@ onMounted(fetchAdhesions);
     <DataTable v-if="!loading" :value="filteredAdhesions" paginator :rows="20" stripedRows sortMode="multiple" removableSort>
       <Column field="fullName" header="Nom Complet" sortable />
       <Column field="email" header="Email" sortable style="max-width: 12rem; overflow: hidden; text-overflow: ellipsis;" />
+      <Column field="telephone" header="Téléphone" sortable />
       <Column field="ville" header="Ville" sortable />
       <Column field="adhesion_amount" header="Adhésion" sortable>
         <template #body="{ data }">{{ data.adhesion_amount }} €</template>

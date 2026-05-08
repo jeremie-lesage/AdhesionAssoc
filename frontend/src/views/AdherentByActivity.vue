@@ -29,6 +29,7 @@
             <Column field="nom" header="Nom" sortable />
             <Column field="prenom" header="Prénom" sortable />
             <Column field="email" header="Email" sortable />
+            <Column field="telephone" header="Téléphone" sortable />
             <Column field="ville" header="Ville" sortable />
             <Column field="status" header="Statut" sortable>
               <template #body="{ data }">
@@ -106,8 +107,8 @@ const fetchAdherents = async (activityId: number) => {
 const exportToCsv = (activity: Activity) => {
   if (!adherents.value.length) return;
 
-  const headers = ['Nom', 'Prénom', 'Email', 'Ville', 'Statut'];
-  const rows = adherents.value.map(a => [a.nom, a.prenom, a.email, a.ville, a.status]);
+  const headers = ['Nom', 'Prénom', 'Email', 'Téléphone', 'Ville', 'Statut'];
+  const rows = adherents.value.map(a => [a.nom, a.prenom, a.email, a.telephone || '', a.ville, a.status]);
 
   let csv = headers.join(';') + '\n';
   rows.forEach(row => { csv += row.join(';') + '\n'; });

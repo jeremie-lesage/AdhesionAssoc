@@ -16,6 +16,7 @@ export interface Adhesion {
   id: number | null;
   code: string;
   email: string;
+  telephone: string;
   nom: string;
   prenom: string;
   numero_rue: string;
