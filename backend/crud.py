@@ -1,6 +1,7 @@
 import string
 import random
 from collections import defaultdict
+from datetime import date
 from typing import List, Optional
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
@@ -30,6 +31,8 @@ def create_adhesion(db: Session, adhesion: AdhesionCreate) -> AdhesionSchema:
     if adhesion.activities:
         activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
         for activity in activities:
+            if activity.registration_deadline and date.today() > activity.registration_deadline:
+                raise ValueError(f"La date limite d'inscription pour l'activité '{activity.name}' est dépassée.")
             if activity.max_participants > 0 and len(activity.adhesions) >= activity.max_participants:
                 raise ValueError(f"Activity '{activity.name}' has reached its maximum number of participants.")
             db_adhesion.activities.append(activity)
@@ -115,6 +118,8 @@ def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optiona
         if adhesion.activities:
             activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
             for activity in activities:
+                if activity.registration_deadline and date.today() > activity.registration_deadline:
+                    raise ValueError(f"La date limite d'inscription pour l'activité '{activity.name}' est dépassée.")
                 db_adhesion.activities.append(activity)
 
     db.commit()

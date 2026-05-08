@@ -5,6 +5,7 @@ export interface Activity {
   location: string;
   max_participants: number;
   current_participants: number;
+  registration_deadline: string | null;
   is_child_activity: boolean;
   is_adult_activity: boolean;
   resident_price: number | undefined;

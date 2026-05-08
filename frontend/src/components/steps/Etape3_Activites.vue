@@ -41,11 +41,11 @@
                                               target="_blank">notre site internet</a></p>
       <div v-for="activity in filteredActivities" :key="activity.id!">
         <label
-            :class="{ 'disabled-activity': activity.max_participants > 0 && activity.current_participants >= activity.max_participants }">
+            :class="{ 'disabled-activity': isActivityUnavailable(activity) }">
 
           <div class="activity-info">
             <input v-model="selectedActivityIds"
-                   :disabled="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
+                   :disabled="isActivityUnavailable(activity)"
                    :value="activity.id"
                    type="checkbox"> {{ activity.name }} <span
               v-if="activity.description">- {{ activity.description }}</span></div>
@@ -60,6 +60,10 @@
           </span>
           <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
                 style="color: red;"> (Complet)</span>
+          <span v-else-if="isDeadlinePassed(activity)"
+                style="color: red;"> (Inscriptions closes)</span>
+          <span v-if="activity.registration_deadline && !isDeadlinePassed(activity)"
+                style="color: #666;"> (Inscription avant le {{ formatDate(activity.registration_deadline) }})</span>
         </label>
       </div>
       <button @click="prevStep">Précédent</button>
@@ -144,6 +148,20 @@ const nextStep = () => {
 const prevStep = () => {
   updateStore(); // Commit changes to the store
   store.prevStep();
+};
+
+const isDeadlinePassed = (activity: Activity): boolean => {
+  if (!activity.registration_deadline) return false;
+  return new Date(activity.registration_deadline) < new Date(new Date().toDateString());
+};
+
+const isActivityUnavailable = (activity: Activity): boolean => {
+  if (activity.max_participants > 0 && activity.current_participants >= activity.max_participants) return true;
+  return isDeadlinePassed(activity);
+};
+
+const formatDate = (dateStr: string): string => {
+  return new Date(dateStr).toLocaleDateString('fr-FR');
 };
 
 const getPrice = (activity: Activity) => {

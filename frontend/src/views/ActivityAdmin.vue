@@ -30,6 +30,12 @@
           <span v-else>Illimité</span>
         </template>
       </Column>
+      <Column field="registration_deadline" header="Date limite" sortable>
+        <template #body="{ data }">
+          <span v-if="data.registration_deadline">{{ new Date(data.registration_deadline).toLocaleDateString('fr-FR') }}</span>
+          <span v-else>—</span>
+        </template>
+      </Column>
       <Column header="Actions">
         <template #body="{ data }">
           <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="openDialog(data)" />
@@ -65,6 +71,10 @@
           <label for="max_participants">Nombre de places disponibles:</label>
           <InputNumber id="max_participants" v-model="editingActivity.max_participants" :min="0" />
         </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="registration_deadline">Date limite d'inscription:</label>
+          <DatePicker id="registration_deadline" :modelValue="deadlineAsDate" @update:modelValue="onDeadlineChange" dateFormat="dd/mm/yy" showIcon showButtonBar />
+        </div>
         <div style="display: flex; gap: 2rem; align-items: center;">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <Checkbox inputId="is_child" v-model="editingActivity.is_child_activity" binary />
@@ -87,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, type Ref } from 'vue';
+import { ref, computed, onMounted, type Ref } from 'vue';
 import api from '@/api';
 import { useRouter } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
@@ -100,6 +110,7 @@ import InputNumber from 'primevue/inputnumber';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import DatePicker from 'primevue/datepicker';
 import ConfirmDialog from 'primevue/confirmdialog';
 
 const confirm = useConfirm();
@@ -116,8 +127,25 @@ const editingActivity: Ref<Activity> = ref({
   is_adult_activity: false,
   max_participants: 0,
   current_participants: 0,
+  registration_deadline: null,
 });
 const isEditing = ref(false);
+
+const deadlineAsDate = computed<Date | null>(() => {
+  if (!editingActivity.value.registration_deadline) return null;
+  return new Date(editingActivity.value.registration_deadline);
+});
+
+const onDeadlineChange = (value: Date | Date[] | (Date | null)[] | null | undefined) => {
+  if (!value || Array.isArray(value)) {
+    editingActivity.value.registration_deadline = null;
+  } else {
+    const d = new Date(value);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    editingActivity.value.registration_deadline = d.toISOString().split('T')[0];
+  }
+};
+
 const loading = ref(true);
 const error = ref(null);
 const router = useRouter();
@@ -189,6 +217,7 @@ const resetForm = () => {
     is_adult_activity: false,
     max_participants: 0,
     current_participants: 0,
+    registration_deadline: null,
   };
   isEditing.value = false;
 };

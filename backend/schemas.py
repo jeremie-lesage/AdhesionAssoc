@@ -1,3 +1,4 @@
+from datetime import date
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
@@ -38,6 +39,7 @@ class ActivityBase(BaseModel):
     is_child_activity: Optional[bool] = False
     is_adult_activity: Optional[bool] = False
     max_participants: Optional[int] = 0
+    registration_deadline: Optional[date] = None
 
 
 class ActivityCreate(ActivityBase):
