@@ -1,3 +1,5 @@
 *.swp
 *.db
 .venv/
+docker-entrypoint-initdb.d
+.mise.toml

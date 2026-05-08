@@ -5,7 +5,7 @@ node = "latest"
 
 [env]
 PROJECT_NAME = "{{ config_root | basename }}"
-DATABASE_URL = "postgresql://foyer_dev:foyer_dev@localhost:5432/foyer_rural_db"
+DATABASE_URL = "postgresql://user:password@localhost:5432/foyer_rural_db"
 
 [tasks.install]
 description = "Install dependencies"
@@ -20,12 +20,13 @@ if docker ps --format '{{"{{"}}.Names{{"}}"}}' | grep -q '^foyer-dev-db$'; then
   echo "PostgreSQL dev container already running"
 else
   docker run -d --name foyer-dev-db \
-    -e POSTGRES_USER=foyer_dev \
-    -e POSTGRES_PASSWORD=foyer_dev \
+    -e POSTGRES_USER=user \
+    -e POSTGRES_PASSWORD=password \
     -e POSTGRES_DB=foyer_rural_db \
     -p 5432:5432 \
+    -v ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro \
     -v foyer-dev-pgdata:/var/lib/postgresql/data \
-    postgres:16-alpine
+    postgres:17-alpine
   echo "PostgreSQL dev container started on port 5432"
 fi
 """
