@@ -1,14 +1,11 @@
-import os
 import pytest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
-from ..database import Base, Adhesion, Activity, AdhesionActivity, Admin, create_tables, get_db
 
-# Set the TESTING environment variable for tests
-os.environ["TESTING"] = "True"
+from models import Base, Adhesion, Activity, adhesion_activity_association
 
-# Use the TEST_DATABASE_URL from database.py
 TEST_DATABASE_URL = "sqlite:///./test.db"
+
 
 @pytest.fixture(scope="module")
 def test_engine():
@@ -16,6 +13,7 @@ def test_engine():
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture(scope="function")
 def test_session(test_engine):
@@ -28,12 +26,13 @@ def test_session(test_engine):
     transaction.rollback()
     connection.close()
 
+
 def test_create_tables(test_engine):
-    # This fixture already calls create_all, so we just need to ensure tables exist
-    assert Adhesion.__tablename__ in inspect(test_engine).get_table_names()
-    assert Activity.__tablename__ in inspect(test_engine).get_table_names()
-    assert AdhesionActivity.__tablename__ in inspect(test_engine).get_table_names()
-    assert Admin.__tablename__ in inspect(test_engine).get_table_names()
+    table_names = inspect(test_engine).get_table_names()
+    assert Adhesion.__tablename__ in table_names
+    assert Activity.__tablename__ in table_names
+    assert adhesion_activity_association.name in table_names
+
 
 def test_create_activity(test_session):
     activity = Activity(name="Test Activity", description="A test activity", max_participants=10)
@@ -42,6 +41,7 @@ def test_create_activity(test_session):
     test_session.refresh(activity)
     assert activity.id is not None
     assert activity.name == "Test Activity"
+
 
 def test_create_adhesion(test_session):
     adhesion = Adhesion(
@@ -62,6 +62,7 @@ def test_create_adhesion(test_session):
     test_session.refresh(adhesion)
     assert adhesion.id is not None
     assert adhesion.email == "test@example.com"
+
 
 def test_adhesion_activity_link(test_session):
     activity = Activity(name="Linked Activity", description="", max_participants=10)
@@ -86,12 +87,7 @@ def test_adhesion_activity_link(test_session):
     test_session.commit()
     test_session.refresh(adhesion)
 
-    adhesion_activity = AdhesionActivity(adhesion_id=adhesion.id, activity_id=activity.id)
-    test_session.add(adhesion_activity)
+    adhesion.activities.append(activity)
     test_session.commit()
 
-    # Verify the link
-    retrieved_adhesion_activity = test_session.query(AdhesionActivity).filter_by(adhesion_id=adhesion.id, activity_id=activity.id).first()
-    assert retrieved_adhesion_activity is not None
-    assert retrieved_adhesion_activity.adhesion_id == adhesion.id
-    assert retrieved_adhesion_activity.activity_id == activity.id
+    assert activity in adhesion.activities

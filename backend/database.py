@@ -17,21 +17,18 @@ def get_db():
         db.close()
 
 
+def run_migrations():
+    from alembic.config import Config
+    from alembic import command
+
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+    alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    print("Running database migrations...")
+    command.upgrade(alembic_cfg, "head")
+
+
 def create_tables():
-    print("Creating/updating database tables...")
-    Base.metadata.create_all(engine)
-
-    db = SessionLocal()
-    default_activities_data = [
-    ]
-
-    for activity_data in default_activities_data:
-        existing_activity = db.query(Activity).filter_by(name=activity_data['name']).first()
-        if not existing_activity:
-            activity = Activity(**activity_data)
-            db.add(activity)
-    db.commit()
-    db.close()
+    run_migrations()
 
 
 if __name__ == "__main__":

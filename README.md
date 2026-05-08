@@ -22,11 +22,17 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
     uv sync
     ```
 
-3.  **Lancer le serveur de développement :**
+3.  **Appliquer les migrations de base de données :**
+    ```bash
+    uv run alembic upgrade head
+    ```
+
+4.  **Lancer le serveur de développement :**
     ```bash
     uv run uvicorn main:app --host 0.0.0.0 --port 8000
     ```
     Le backend sera alors accessible à l'adresse `http://localhost:8000`.
+    > Note : les migrations Alembic sont aussi exécutées automatiquement au démarrage du serveur.
 
 ### Frontend
 
@@ -45,6 +51,26 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
     npm run dev
     ```
     Le frontend sera alors accessible à l'adresse `http://localhost:5173`.
+
+### Migrations de base de données (Alembic)
+
+Les migrations de schéma sont gérées par [Alembic](https://alembic.sqlalchemy.org/). Les commandes s'exécutent depuis le répertoire `backend/` :
+
+```bash
+# Générer une nouvelle migration après modification de models.py
+uv run alembic revision --autogenerate -m "description du changement"
+
+# Appliquer toutes les migrations en attente
+uv run alembic upgrade head
+
+# Voir la révision actuelle de la base
+uv run alembic current
+
+# Voir l'historique des migrations
+uv run alembic history
+```
+
+> L'URL de connexion à la base est lue depuis la variable d'environnement `DATABASE_URL` (par défaut : `postgresql://user:password@localhost:5432/foyer_rural_db`).
 
 ## Utilisation
 
