@@ -2,7 +2,10 @@
   <div>
     <h2>Administration des Activités</h2>
 
-    <h3>Activités existantes</h3>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+      <Button label="Ajouter une activité" icon="pi pi-plus" @click="openDialog()" />
+    </div>
+
     <p v-if="loading">Chargement des activités...</p>
     <p v-if="error">Erreur lors du chargement des activités: {{ error }}</p>
     <DataTable v-if="activities.length" :value="activities" stripedRows>
@@ -29,54 +32,55 @@
       </Column>
       <Column header="Actions">
         <template #body="{ data }">
-          <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="startEdit(data)" />
+          <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="openDialog(data)" />
           <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="deleteActivity(data.id)" />
         </template>
       </Column>
     </DataTable>
     <p v-else-if="!loading && !error">Aucune activité définie.</p>
 
-    <h3>{{ isEditing ? 'Modifier une activité' : 'Ajouter une activité' }}</h3>
-    <form @submit.prevent="isEditing ? updateActivity() : addActivity()" style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px;">
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="name">Nom de l'activité:</label>
-        <InputText id="name" v-model="editingActivity.name" placeholder="Nom de l'activité" required />
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="description">Description:</label>
-        <Textarea id="description" v-model="editingActivity.description" placeholder="Description" rows="3" />
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="location">Lieu (École ou Foyer):</label>
-        <InputText id="location" v-model="editingActivity.location" placeholder="Lieu (École ou Foyer)" />
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="resident_price">Tarif Résident:</label>
-        <InputNumber id="resident_price" v-model="editingActivity.resident_price" mode="currency" currency="EUR" locale="fr-FR" />
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="external_price">Tarif Extérieur:</label>
-        <InputNumber id="external_price" v-model="editingActivity.external_price" mode="currency" currency="EUR" locale="fr-FR" />
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label for="max_participants">Nombre de places disponibles:</label>
-        <InputNumber id="max_participants" v-model="editingActivity.max_participants" :min="0" />
-      </div>
-      <div style="display: flex; gap: 2rem; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <Checkbox inputId="is_child" v-model="editingActivity.is_child_activity" binary />
-          <label for="is_child">Activité Enfant</label>
+    <Dialog v-model:visible="dialogVisible" :header="isEditing ? 'Modifier une activité' : 'Ajouter une activité'" modal :style="{ width: '500px' }">
+      <form @submit.prevent="isEditing ? updateActivity() : addActivity()" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="name">Nom de l'activité:</label>
+          <InputText id="name" v-model="editingActivity.name" placeholder="Nom de l'activité" required />
         </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <Checkbox inputId="is_adult" v-model="editingActivity.is_adult_activity" binary />
-          <label for="is_adult">Activité Adulte</label>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="description">Description:</label>
+          <Textarea id="description" v-model="editingActivity.description" placeholder="Description" rows="3" />
         </div>
-      </div>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-        <Button :label="isEditing ? 'Modifier' : 'Ajouter'" :icon="isEditing ? 'pi pi-pencil' : 'pi pi-plus'" type="submit" />
-        <Button v-if="isEditing" label="Annuler" icon="pi pi-times" severity="secondary" type="button" @click="cancelEdit" />
-      </div>
-    </form>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="location">Lieu (École ou Foyer):</label>
+          <InputText id="location" v-model="editingActivity.location" placeholder="Lieu (École ou Foyer)" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="resident_price">Tarif Résident:</label>
+          <InputNumber id="resident_price" v-model="editingActivity.resident_price" mode="currency" currency="EUR" locale="fr-FR" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="external_price">Tarif Extérieur:</label>
+          <InputNumber id="external_price" v-model="editingActivity.external_price" mode="currency" currency="EUR" locale="fr-FR" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="max_participants">Nombre de places disponibles:</label>
+          <InputNumber id="max_participants" v-model="editingActivity.max_participants" :min="0" />
+        </div>
+        <div style="display: flex; gap: 2rem; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <Checkbox inputId="is_child" v-model="editingActivity.is_child_activity" binary />
+            <label for="is_child">Activité Enfant</label>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <Checkbox inputId="is_adult" v-model="editingActivity.is_adult_activity" binary />
+            <label for="is_adult">Activité Adulte</label>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <Button :label="isEditing ? 'Modifier' : 'Ajouter'" :icon="isEditing ? 'pi pi-check' : 'pi pi-plus'" type="submit" />
+          <Button label="Annuler" icon="pi pi-times" severity="secondary" type="button" @click="dialogVisible = false" />
+        </div>
+      </form>
+    </Dialog>
 
     <ConfirmDialog />
   </div>
@@ -95,10 +99,12 @@ import Textarea from 'primevue/textarea';
 import InputNumber from 'primevue/inputnumber';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import ConfirmDialog from 'primevue/confirmdialog';
 
 const confirm = useConfirm();
 const activities = ref<Activity[]>([]);
+const dialogVisible = ref(false);
 const editingActivity: Ref<Activity> = ref({
   id: null,
   name: '',
@@ -115,6 +121,16 @@ const isEditing = ref(false);
 const loading = ref(true);
 const error = ref(null);
 const router = useRouter();
+
+const openDialog = (activity?: Activity) => {
+  if (activity) {
+    editingActivity.value = { ...activity };
+    isEditing.value = true;
+  } else {
+    resetForm();
+  }
+  dialogVisible.value = true;
+};
 
 const fetchActivities = async () => {
   loading.value = true;
@@ -136,6 +152,7 @@ const fetchActivities = async () => {
 const addActivity = async () => {
   try {
     await api.post('/api/activities', editingActivity.value);
+    dialogVisible.value = false;
     resetForm();
     fetchActivities();
   } catch (err: any) {
@@ -146,26 +163,18 @@ const addActivity = async () => {
   }
 };
 
-const startEdit = (activity: Activity) => {
-  editingActivity.value = { ...activity };
-  isEditing.value = true;
-};
-
 const updateActivity = async () => {
   try {
     await api.put(`/api/activities/${editingActivity.value.id}`, editingActivity.value);
+    dialogVisible.value = false;
     resetForm();
     fetchActivities();
   } catch (err: any) {
     alert(`Erreur lors de la mise à jour de l'activité: ${err.response?.data?.detail || err.message}`);
     if (err.response && err.response.status === 401) {
-      router.push({name: 'admin-login'});
+      router.push({ name: 'admin-login' });
     }
   }
-}
-
-const cancelEdit = () => {
-  resetForm();
 };
 
 const resetForm = () => {
@@ -199,12 +208,12 @@ const deleteActivity = (id: number | null) => {
       } catch (err: any) {
         alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);
         if (err.response && err.response.status === 401) {
-          router.push({name: 'admin-login'});
+          router.push({ name: 'admin-login' });
         }
       }
     },
   });
-}
+};
 
 onMounted(fetchActivities);
 </script>
