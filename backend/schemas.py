@@ -175,6 +175,7 @@ class AdminLogin(BaseModel):
 class ContactStatus(BaseModel):
     email: EmailStr
     status: str
+    telephone: Optional[str] = None
 
 
 class FamilyDetails(BaseModel):

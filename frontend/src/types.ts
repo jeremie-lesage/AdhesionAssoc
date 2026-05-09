@@ -44,6 +44,7 @@ export interface AdminUserCreate {
 export interface ContactStatus {
   email: string;
   status: string;
+  telephone: string | null;
 }
 
 export interface FamilyDetails {

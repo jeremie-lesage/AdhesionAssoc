@@ -13,6 +13,7 @@
               {{ data.prenom }} {{ data.nom }}
             </template>
           </Column>
+          <Column field="telephone" header="Téléphone" />
           <Column header="Statut">
             <template #body="{ data }">
               <Tag :value="data.status" :severity="getStatusSeverity(data.status)" />

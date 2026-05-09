@@ -224,19 +224,22 @@ def delete_admin(db: Session, admin_id: int) -> bool:
 
 def get_contacts_with_status(db: Session) -> List[ContactStatus]:
     adhesions = db.query(Adhesion).all()
-    contacts = defaultdict(list)
+    contacts: dict[str, dict] = defaultdict(lambda: {"statuses": [], "telephone": None})
     for adhesion in adhesions:
-        contacts[adhesion.email].append(adhesion.status)
+        contacts[adhesion.email]["statuses"].append(adhesion.status)
+        if adhesion.telephone and not contacts[adhesion.email]["telephone"]:
+            contacts[adhesion.email]["telephone"] = adhesion.telephone
 
     contact_statuses = []
-    for email, statuses in contacts.items():
+    for email, data in contacts.items():
+        statuses = data["statuses"]
         if "pending" in statuses:
             status = "pending"
         elif all(s == "paid" for s in statuses):
             status = "payé"
         else:
             status = "Incomplet"
-        contact_statuses.append(ContactStatus(email=email, status=status))
+        contact_statuses.append(ContactStatus(email=email, status=status, telephone=data["telephone"]))
 
     return contact_statuses
 

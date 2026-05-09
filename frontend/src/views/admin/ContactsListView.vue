@@ -9,6 +9,7 @@
 
     <DataTable :value="filteredContacts" stripedRows sortMode="multiple" removableSort paginator :rows="20">
       <Column field="email" header="Email du Contact" sortable />
+      <Column field="telephone" header="Téléphone" sortable />
       <Column field="status" header="Statut" sortable>
         <template #body="{ data }">
           <Tag :value="data.status" :severity="getStatusSeverity(data.status)" />
