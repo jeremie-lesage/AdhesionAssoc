@@ -72,6 +72,18 @@ uv run alembic history
 
 > L'URL de connexion à la base est lue depuis la variable d'environnement `DATABASE_URL` (par défaut : `postgresql://user:password@localhost:5432/foyer_rural_db`).
 
+### Configuration
+
+Les variables d'environnement suivantes sont disponibles pour le backend (via fichier `.env` ou variables système) :
+
+| Variable | Description | Défaut |
+|---|---|---|
+| `DATABASE_URL` | URL de connexion PostgreSQL | `postgresql://user:password@localhost:5432/foyer_rural_db` |
+| `POSTAL_CODE_PREFIX` | Préfixe de code postal autorisé (ex: `21` pour la Côte-d'Or) | `21` |
+| `BREVO_API_KEY` | Clé API Brevo pour l'envoi d'emails | — |
+| `MAIL_FROM` | Adresse email d'expédition | — |
+| `IBAN` / `BIC` / `BANK` | Coordonnées bancaires affichées au récapitulatif | — |
+
 ## Utilisation
 
 Une fois les deux serveurs (backend et frontend) lancés, vous pouvez ouvrir votre navigateur et vous rendre sur `http://localhost:5173` pour accéder au formulaire d'inscription.
