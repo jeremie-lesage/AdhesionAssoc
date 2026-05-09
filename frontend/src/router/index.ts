@@ -50,6 +50,12 @@ const router = createRouter({
           component: () => import('../views/AdhesionAdminView.vue')
         },
         {
+          path: 'adhesions/:code',
+          name: 'admin-adhesion-detail',
+          component: () => import('../views/admin/AdhesionDetailView.vue'),
+          props: true
+        },
+        {
           path: 'activities',
           name: 'admin-activities',
           component: () => import('../views/ActivityAdmin.vue')
