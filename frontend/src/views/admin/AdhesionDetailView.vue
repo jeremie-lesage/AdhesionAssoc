@@ -62,10 +62,20 @@
       <Message v-if="success" severity="success" :closable="true" @close="success = null">{{ success }}</Message>
       <Message v-if="error" severity="error" :closable="true" @close="error = null">{{ error }}</Message>
 
-      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
         <Button label="Retour" icon="pi pi-arrow-left" severity="secondary" @click="router.push({ name: 'admin-adhesions' })" />
         <Button v-if="adhesion.status !== 'paid'" label="Modifier" icon="pi pi-pencil" severity="info" @click="router.push({ name: 'adhesion', query: { code: adhesion.code, source: 'admin' } })" />
+        <Button v-if="adhesion.status === 'pending'" label="Valider" icon="pi pi-check" severity="success" @click="handleValidate" />
         <Button v-if="adhesion.status === 'validated'" label="Repasser en attente" icon="pi pi-replay" severity="warn" @click="handleInvalidate" />
+        <Button v-if="adhesion.status === 'pending' || adhesion.status === 'validated'" label="Marquer payé" icon="pi pi-euro" severity="warn" @click="showPaymentChoice = true" />
+      </div>
+
+      <div v-if="showPaymentChoice" style="display: flex; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
+        <span style="font-weight: 600;">Mode de paiement :</span>
+        <Button label="Chèque" severity="info" size="small" @click="handlePay('Chèque')" />
+        <Button label="Virement" severity="info" size="small" @click="handlePay('Virement')" />
+        <Button label="Espèces" severity="info" size="small" @click="handlePay('Espèces')" />
+        <Button label="Annuler" severity="secondary" size="small" text @click="showPaymentChoice = false" />
       </div>
     </template>
   </div>
@@ -74,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getAdhesionByCode, invalidateAdhesion } from '@/api';
+import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment } from '@/api';
 import type { Adhesion, Activity } from '@/types';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
@@ -87,6 +97,16 @@ const adhesion = ref<Adhesion | null>(null);
 const success = ref<string | null>(null);
 const error = ref<string | null>(null);
 
+const handleValidate = async () => {
+  if (!adhesion.value) return;
+  try {
+    adhesion.value = await validateAdhesion(adhesion.value.code);
+    success.value = 'La demande a été validée.';
+  } catch {
+    error.value = 'Erreur lors de la validation.';
+  }
+};
+
 const handleInvalidate = async () => {
   if (!adhesion.value) return;
   try {
@@ -96,6 +116,19 @@ const handleInvalidate = async () => {
     error.value = 'Erreur lors du changement de statut.';
   }
 };
+
+const handlePay = async (method: string) => {
+  if (!adhesion.value) return;
+  try {
+    adhesion.value = await updateAdhesionPayment(adhesion.value.code, method);
+    success.value = `Le paiement par ${method.toLowerCase()} a été enregistré.`;
+    showPaymentChoice.value = false;
+  } catch {
+    error.value = 'Erreur lors de l\'enregistrement du paiement.';
+  }
+};
+
+const showPaymentChoice = ref(false);
 
 const getPrice = (activity: Activity) => {
   if (!adhesion.value) return 0;
