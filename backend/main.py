@@ -67,7 +67,8 @@ def get_config():
     return PublicSettings(
         iban=settings.IBAN,
         bic=settings.BIC,
-        bank=settings.BANK
+        bank=settings.BANK,
+        postal_code_prefix=settings.POSTAL_CODE_PREFIX,
     )
 
 

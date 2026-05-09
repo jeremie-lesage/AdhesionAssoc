@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     IBAN: str = "IBAN non configuré sur le serveur"
     BIC: str = "BIC non configuré sur le serveur"
     BANK: str = "BANK non configuré sur le serveur"
+    POSTAL_CODE_PREFIX: str = "21"
 
     class Config:
         env_file = ".env"

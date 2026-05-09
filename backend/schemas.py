@@ -190,3 +190,4 @@ class PublicSettings(BaseModel):
     iban: str
     bic: str
     bank: str
+    postal_code_prefix: str
