@@ -149,6 +149,10 @@ const nextStep = () => {
     }
     formData.telephone = cleaned;
   }
+  formData.nom = formData.nom.toLocaleUpperCase('fr-FR');
+  formData.prenom = formData.prenom
+    .toLocaleLowerCase('fr-FR')
+    .replace(/(^|[\s\-])(\S)/g, (_m, sep, c) => sep + c.toLocaleUpperCase('fr-FR'));
   store.nextStep();
 };
 
