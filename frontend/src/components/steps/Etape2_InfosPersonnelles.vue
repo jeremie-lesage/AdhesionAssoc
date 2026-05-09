@@ -16,7 +16,8 @@
       </div>
       <div>
         <label for="telephone">Téléphone:</label>
-        <input type="tel" id="telephone" v-model="formData.telephone" autocomplete="tel" placeholder="06 12 34 56 78">
+        <input type="tel" id="telephone" ref="telInput" v-model="formData.telephone" autocomplete="tel" placeholder="06 12 34 56 78"
+               @input="telInput?.setCustomValidity('')">
       </div>
       <div>
         <label for="numero_rue">Numéro de la rue:</label>
@@ -41,12 +42,25 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useFormStore } from '@/stores/form';
 
 const store = useFormStore();
 const formData = store.formData;
+const telInput = ref<HTMLInputElement | null>(null);
+
+const telPattern = /^(\+33|0)[1-9]\d{8}$/;
 
 const nextStep = () => {
+  if (formData.telephone) {
+    const cleaned = formData.telephone.replace(/[\s.\-]/g, '');
+    if (!telPattern.test(cleaned)) {
+      telInput.value?.setCustomValidity('Veuillez saisir un numéro de téléphone valide (ex: 06 12 34 56 78)');
+      telInput.value?.reportValidity();
+      return;
+    }
+    formData.telephone = cleaned;
+  }
   store.nextStep();
 };
 

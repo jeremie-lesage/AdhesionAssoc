@@ -92,6 +92,7 @@ p strong {
 .public-view input[type="text"],
 .public-view input[type="email"],
 .public-view input[type="date"],
+.public-view input[type="tel"],
 .public-view textarea {
   width: calc(100% - 1.5rem);
   padding: 0.8rem;
