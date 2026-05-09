@@ -9,7 +9,7 @@
         <button @click="startNewForm" class="btn btn-primary btn-lg">S'inscrire</button>
         <RouterLink to="/load" class="btn btn-outline">Reprendre mon inscription</RouterLink>
       </div>
-      <p class="hero-hint">Une demande par adhérent — vous pouvez utiliser la même adresse email pour chaque membre de la famille.</p>
+      <p class="hero-hint">Une demande par adhérent — <strong>vous pouvez utiliser la même adresse email pour chaque membre de la famille</strong>.</p>
     </section>
 
     <!-- Processus -->

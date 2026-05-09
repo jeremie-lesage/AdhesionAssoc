@@ -5,7 +5,7 @@
       |
       <button @click="startNewForm" class="nav-button">Nouveau Formulaire</button>
       |
-      <RouterLink to="/load">Charger un Formulaire</RouterLink>
+      <RouterLink to="/load">Reprendre mon inscription</RouterLink>
       |
       <RouterLink to="/admin">Administration</RouterLink>
     </span>
@@ -42,10 +42,15 @@ const startNewForm = () => {
 }
 
 .nav-button {
-  display: inline-block;
-  background-color: white;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
   color: var(--color-primary);
   font-weight: 500;
+  padding: 8px 1rem;
+  border-radius: 4px;
+  cursor: pointer;
   transition: background-color 0.3s ease;
 }
 .nav-button:hover {
