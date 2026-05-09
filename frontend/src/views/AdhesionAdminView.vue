@@ -216,9 +216,8 @@ onMounted(fetchAdhesions);
     <Message v-if="success" severity="success" :closable="true" @close="success = null">{{ success }}</Message>
 
     <DataTable v-if="!loading" :value="filteredAdhesions" paginator :rows="20" stripedRows sortMode="multiple" removableSort>
+      <Column field="code" header="Code" sortable style="font-family: monospace;" />
       <Column field="fullName" header="Nom Complet" sortable />
-      <Column field="email" header="Email" sortable style="max-width: 12rem; overflow: hidden; text-overflow: ellipsis;" />
-      <Column field="telephone" header="Téléphone" sortable />
       <Column field="ville" header="Ville" sortable />
       <Column field="adhesion_amount" header="Adhésion" sortable>
         <template #body="{ data }">{{ data.adhesion_amount }} €</template>
