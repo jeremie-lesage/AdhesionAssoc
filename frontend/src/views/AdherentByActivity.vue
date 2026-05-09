@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h2>Adhérents par Activité</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">Adhérents par Activité</h2>
+      <Button label="Tout exporter en ZIP" icon="pi pi-file-export" :loading="exporting" :disabled="!activities.length" @click="exportAllToZip" />
+    </div>
 
     <p v-if="loadingActivities">Chargement des activités...</p>
 
@@ -46,6 +49,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import JSZip from 'jszip';
 import api from '@/api';
 import { useRouter } from 'vue-router';
 import type { Activity, Adhesion } from '@/types';
@@ -64,6 +68,7 @@ const adherents = ref<Adhesion[]>([]);
 const activeTab = ref('');
 const loadingActivities = ref(true);
 const loadingAdherents = ref(false);
+const exporting = ref(false);
 const router = useRouter();
 
 const statusLabel = (status: string) => {
@@ -101,6 +106,33 @@ const fetchAdherents = async (activityId: number) => {
     adherents.value = [];
   } finally {
     loadingAdherents.value = false;
+  }
+};
+
+const buildCsv = (adherentsList: Adhesion[]) => {
+  const headers = ['Nom', 'Prénom', 'Email', 'Téléphone', 'Ville', 'Statut'];
+  const rows = adherentsList.map(a => [a.nom, a.prenom, a.email, a.telephone || '', a.ville, a.status]);
+  return '﻿' + headers.join(';') + '\n' + rows.map(r => r.join(';')).join('\n');
+};
+
+const exportAllToZip = async () => {
+  exporting.value = true;
+  try {
+    const zip = new JSZip();
+    for (const activity of activities.value) {
+      const res = await api.get(`/api/activities/${activity.id}/adherents`);
+      const csv = buildCsv(res.data);
+      zip.file(`${activity.name.replace(/[/\\?%*:|"<>]/g, '_')}.csv`, csv);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'adherents_par_activite.zip');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    exporting.value = false;
   }
 };
 
