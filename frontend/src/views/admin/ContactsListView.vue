@@ -1,9 +1,15 @@
 <template>
   <div style="max-width: 960px; margin: 1.5rem auto">
     <h1>Gérer les Demandes par Contact</h1>
-    <DataTable :value="contacts" stripedRows>
-      <Column field="email" header="Email du Contact" />
-      <Column header="Statut">
+
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem;">
+      <InputText v-model="searchQuery" placeholder="Rechercher par email..." style="width: 280px;" />
+      <Select v-model="selectedStatus" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Statut" style="width: 180px;" />
+    </div>
+
+    <DataTable :value="filteredContacts" stripedRows sortMode="multiple" removableSort paginator :rows="20">
+      <Column field="email" header="Email du Contact" sortable />
+      <Column field="status" header="Statut" sortable>
         <template #body="{ data }">
           <Tag :value="data.status" :severity="getStatusSeverity(data.status)" />
         </template>
@@ -24,15 +30,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { getContacts } from '@/api';
 import type { ContactStatus } from '@/types';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 
 const contacts = ref<ContactStatus[]>([]);
+const searchQuery = ref('');
+const selectedStatus = ref('all');
+
+const statusOptions = computed(() => {
+  const statuses = new Set(contacts.value.map(c => c.status));
+  return [
+    { label: 'Tous', value: 'all' },
+    ...Array.from(statuses).map(s => ({ label: s, value: s })),
+  ];
+});
+
+const filteredContacts = computed(() => {
+  let result = contacts.value;
+  if (selectedStatus.value !== 'all') {
+    result = result.filter(c => c.status === selectedStatus.value);
+  }
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(c => c.email.toLowerCase().includes(query));
+  }
+  return result;
+});
 
 onMounted(async () => {
   try {
