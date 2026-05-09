@@ -6,6 +6,9 @@ export interface Activity {
   max_participants: number;
   current_participants: number;
   registration_deadline: string | null;
+  day_of_week: number | null;
+  start_time: string | null;
+  end_time: string | null;
   is_child_activity: boolean;
   is_adult_activity: boolean;
   resident_price: number | undefined;

@@ -8,9 +8,18 @@
 
     <p v-if="loading">Chargement des activités...</p>
     <p v-if="error">Erreur lors du chargement des activités: {{ error }}</p>
-    <DataTable v-if="activities.length" :value="activities" stripedRows>
+    <DataTable v-if="activities.length" :value="activities" stripedRows sortField="name" :sortOrder="1">
       <Column field="name" header="Nom" sortable />
       <Column field="description" header="Description" />
+      <Column header="Horaire" sortable sortField="day_of_week">
+        <template #body="{ data }">
+          <template v-if="data.day_of_week != null">
+            {{ dayLabels[data.day_of_week] }}
+            <span v-if="data.start_time"> {{ data.start_time.substring(0, 5) }}<span v-if="data.end_time"> – {{ data.end_time.substring(0, 5) }}</span></span>
+          </template>
+          <span v-else>—</span>
+        </template>
+      </Column>
       <Column field="location" header="Lieu" sortable />
       <Column field="resident_price" header="Tarif Résident" sortable>
         <template #body="{ data }">{{ data.resident_price }} €</template>
@@ -75,6 +84,20 @@
           <label for="registration_deadline">Date limite d'inscription:</label>
           <DatePicker id="registration_deadline" :modelValue="deadlineAsDate" @update:modelValue="onDeadlineChange" dateFormat="dd/mm/yy" showIcon showButtonBar />
         </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="day_of_week">Jour de la semaine:</label>
+          <Select id="day_of_week" v-model="editingActivity.day_of_week" :options="dayOptions" optionLabel="label" optionValue="value" placeholder="— Aucun —" showClear />
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
+            <label for="start_time">Heure début:</label>
+            <InputText id="start_time" v-model="editingActivity.start_time" type="time" />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
+            <label for="end_time">Heure fin:</label>
+            <InputText id="end_time" v-model="editingActivity.end_time" type="time" />
+          </div>
+        </div>
         <div style="display: flex; gap: 2rem; align-items: center;">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <Checkbox inputId="is_child" v-model="editingActivity.is_child_activity" binary />
@@ -111,7 +134,20 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import DatePicker from 'primevue/datepicker';
+import Select from 'primevue/select';
 import ConfirmDialog from 'primevue/confirmdialog';
+
+const dayLabels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+const dayOptions = [
+  { label: 'Lundi', value: 0 },
+  { label: 'Mardi', value: 1 },
+  { label: 'Mercredi', value: 2 },
+  { label: 'Jeudi', value: 3 },
+  { label: 'Vendredi', value: 4 },
+  { label: 'Samedi', value: 5 },
+  { label: 'Dimanche', value: 6 },
+];
 
 const confirm = useConfirm();
 const activities = ref<Activity[]>([]);
@@ -128,6 +164,9 @@ const editingActivity: Ref<Activity> = ref({
   max_participants: 0,
   current_participants: 0,
   registration_deadline: null,
+  day_of_week: null,
+  start_time: null,
+  end_time: null,
 });
 const isEditing = ref(false);
 
@@ -218,6 +257,9 @@ const resetForm = () => {
     max_participants: 0,
     current_participants: 0,
     registration_deadline: null,
+    day_of_week: null,
+    start_time: null,
+    end_time: null,
   };
   isEditing.value = false;
 };

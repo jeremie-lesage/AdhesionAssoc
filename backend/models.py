@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Table, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Float, Boolean, Table, ForeignKey, Date, Time
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -45,6 +45,9 @@ class Activity(Base):
     is_adult_activity = Column(Boolean, default=False)
     max_participants = Column(Integer, default=0)
     registration_deadline = Column(Date, nullable=True)
+    day_of_week = Column(Integer, nullable=True)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
 
     adhesions = relationship("Adhesion", secondary=adhesion_activity_association, back_populates="activities")
 

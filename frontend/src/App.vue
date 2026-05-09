@@ -5,6 +5,8 @@
       |
       <button @click="startNewForm" class="nav-button">Nouveau Formulaire</button>
       |
+      <RouterLink to="/planning">Planning</RouterLink>
+      |
       <RouterLink to="/load">Reprendre mon inscription</RouterLink>
       |
       <RouterLink to="/admin">Administration</RouterLink>

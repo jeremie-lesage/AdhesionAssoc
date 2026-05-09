@@ -20,6 +20,11 @@ const router = createRouter({
       component: NewAdhesionForm
     },
     {
+      path: '/planning',
+      name: 'planning',
+      component: () => import('../views/CalendarView.vue')
+    },
+    {
       path: '/load',
       name: 'load',
       component: LoadForm
