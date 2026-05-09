@@ -127,6 +127,9 @@ onMounted(async () => {
 const telPattern = /^(\+33|0)[1-9]\d{8}$/;
 
 const nextStep = () => {
+  for (const key of ['nom', 'prenom', 'numero_rue', 'nom_rue', 'code_postal', 'ville', 'telephone'] as const) {
+    if (formData[key]) formData[key] = formData[key].trim();
+  }
   if (formData.date_naissance) {
     const year = new Date(formData.date_naissance).getFullYear();
     if (year < 1900 || year > new Date().getFullYear()) {
