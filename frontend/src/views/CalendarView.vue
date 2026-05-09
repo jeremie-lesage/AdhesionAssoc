@@ -180,7 +180,7 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  min-width: 700px;
+  width: 100%;
 }
 
 .time-col { width: 50px; flex-shrink: 0; background: #f8fafd; border-right: 1px solid var(--color-border); }

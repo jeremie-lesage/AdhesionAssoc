@@ -37,6 +37,11 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
+#app.wide-shell {
+  max-width: none;
+  margin: 0.5rem 1rem;
+}
+
 h1, h2, h3 {
   color: var(--color-primary);
   margin-bottom: 1.5rem;

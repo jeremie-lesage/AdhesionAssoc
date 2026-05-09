@@ -25,9 +25,11 @@ const route = useRoute();
 const formStore = useFormStore();
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
+const isWideRoute = computed(() => route.path === '/planning');
 
-watch(isAdminRoute, (isAdmin) => {
+watch([isAdminRoute, isWideRoute], ([isAdmin, isWide]) => {
   document.getElementById('app')?.classList.toggle('no-shell', isAdmin);
+  document.getElementById('app')?.classList.toggle('wide-shell', isWide);
 }, { immediate: true });
 
 const startNewForm = () => {
