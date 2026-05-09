@@ -49,6 +49,7 @@ const route = useRoute();
 const sidebarCollapsed = ref(false);
 
 const navItems = [
+  { to: '/admin/dashboard', icon: 'pi pi-chart-bar', label: 'Tableau de bord' },
   { to: '/admin/adhesions', icon: 'pi pi-file', label: 'Adhésions' },
   { to: '/admin/contacts', icon: 'pi pi-envelope', label: 'Contacts' },
   { to: '/admin/activities', icon: 'pi pi-list', label: 'Activités' },

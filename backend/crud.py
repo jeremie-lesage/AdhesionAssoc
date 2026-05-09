@@ -9,7 +9,8 @@ from sqlalchemy import func
 from models import Adhesion, Activity, AdminUser as Admin
 from schemas import (
     AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUserSchema,
-    AdhesionSchema, ActivitySchema, AdminUserOut, ContactStatus, FamilyDetails
+    AdhesionSchema, ActivitySchema, AdminUserOut, ContactStatus, FamilyDetails,
+    DashboardStats, ActivityStats,
 )
 
 
@@ -280,4 +281,72 @@ def get_family_details_by_email(db: Session, email: str) -> Optional[FamilyDetai
         email=email,
         adherents=adhesion_schemas,
         total_due=total_due
+    )
+
+
+def get_dashboard_stats(db: Session) -> DashboardStats:
+    adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).all()
+    activities = db.query(Activity).options(selectinload(Activity.adhesions)).all()
+
+    pending = sum(1 for a in adhesions if a.status == 'pending')
+    validated = sum(1 for a in adhesions if a.status == 'validated')
+    paid = sum(1 for a in adhesions if a.status == 'paid')
+    contacts = len(set(a.email for a in adhesions))
+    residents = sum(1 for a in adhesions if a.ville and a.ville.lower() == 'fauverney')
+    external = len(adhesions) - residents
+
+    children = 0
+    adults = 0
+    for a in adhesions:
+        if a.date_naissance:
+            try:
+                from datetime import datetime
+                birth = datetime.strptime(a.date_naissance, "%Y-%m-%d")
+                age = (datetime.now() - birth).days // 365
+                if age < 16:
+                    children += 1
+                else:
+                    adults += 1
+            except ValueError:
+                adults += 1
+        else:
+            adults += 1
+
+    revenue_expected = sum(_calculate_adhesion_cost(a) for a in adhesions)
+    revenue_collected = sum(_calculate_adhesion_cost(a) for a in adhesions if a.status == 'paid')
+
+    activity_stats = []
+    for act in activities:
+        act_revenue_expected = 0.0
+        act_revenue_collected = 0.0
+        for adh in act.adhesions:
+            is_resident = adh.ville and adh.ville.lower() == 'fauverney'
+            price = (act.resident_price if is_resident else act.external_price) or 0
+            act_revenue_expected += price
+            if adh.status == 'paid':
+                act_revenue_collected += price
+        activity_stats.append(ActivityStats(
+            id=act.id,
+            name=act.name,
+            is_child_activity=act.is_child_activity or False,
+            is_adult_activity=act.is_adult_activity or False,
+            max_participants=act.max_participants or 0,
+            current_participants=len(act.adhesions),
+            revenue_expected=act_revenue_expected,
+            revenue_collected=act_revenue_collected,
+        ))
+
+    return DashboardStats(
+        total_adhesions=len(adhesions),
+        pending=pending,
+        validated=validated,
+        paid=paid,
+        total_contacts=contacts,
+        residents=residents,
+        external=external,
+        children=children,
+        adults=adults,
+        revenue_expected=revenue_expected,
+        revenue_collected=revenue_collected,
+        activities=activity_stats,
     )

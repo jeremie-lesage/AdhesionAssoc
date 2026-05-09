@@ -187,6 +187,31 @@ class FamilyDetails(BaseModel):
 AdhesionSchema.model_rebuild()
 
 
+class ActivityStats(BaseModel):
+    id: int
+    name: str
+    is_child_activity: bool
+    is_adult_activity: bool
+    max_participants: int
+    current_participants: int
+    revenue_expected: float
+    revenue_collected: float
+
+class DashboardStats(BaseModel):
+    total_adhesions: int
+    pending: int
+    validated: int
+    paid: int
+    total_contacts: int
+    residents: int
+    external: int
+    children: int
+    adults: int
+    revenue_expected: float
+    revenue_collected: float
+    activities: List[ActivityStats]
+
+
 class PublicSettings(BaseModel):
     iban: str
     bic: str

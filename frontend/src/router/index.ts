@@ -42,7 +42,12 @@ const router = createRouter({
         {
           path: '',
           name: 'admin',
-          redirect: '/admin/adhesions'
+          redirect: '/admin/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'admin-dashboard',
+          component: () => import('../views/admin/DashboardView.vue')
         },
         {
           path: 'adhesions',

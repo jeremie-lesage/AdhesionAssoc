@@ -10,7 +10,7 @@ from typing import List
 from schemas import (
     AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
     AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate,
-    ContactStatus, FamilyDetails, PublicSettings
+    ContactStatus, FamilyDetails, PublicSettings, DashboardStats
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -260,3 +260,8 @@ def get_family_details(email: str, db: Session = Depends(get_db)):
     if not details:
         raise HTTPException(status_code=404, detail="No adhesions found for this email")
     return details
+
+
+@app.get("/api/admin/stats", response_model=DashboardStats, dependencies=[Depends(get_current_admin)])
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    return crud.get_dashboard_stats(db)
