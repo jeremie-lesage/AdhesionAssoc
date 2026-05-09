@@ -28,6 +28,8 @@ class Adhesion(Base):
     status = Column(String, default="pending")  # pending, validated, paid
     payment_method = Column(String, nullable=True)
     adhesion_amount = Column(Float, nullable=True)
+    discount_amount = Column(Float, nullable=True, default=0)
+    discount_reason = Column(String, nullable=True)
 
     activities = relationship("Activity", secondary=adhesion_activity_association, back_populates="adhesions")
 

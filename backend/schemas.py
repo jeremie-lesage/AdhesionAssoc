@@ -113,6 +113,8 @@ class AdhesionBase(BaseModel):
     ville: Optional[str] = None
     adhesion_amount: Optional[float] = None
     payment_method: Optional[str] = None
+    discount_amount: Optional[float] = 0
+    discount_reason: Optional[str] = None
 
 
 class AdhesionCreate(AdhesionBase):
@@ -132,6 +134,11 @@ class AdhesionSchema(AdhesionBase):
 
 class AdhesionPaymentUpdate(BaseModel):
     payment_method: str
+
+
+class AdhesionDiscountUpdate(BaseModel):
+    discount_amount: float
+    discount_reason: Optional[str] = None
 
 
 # Pydantic models for Admin

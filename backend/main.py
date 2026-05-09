@@ -10,7 +10,8 @@ from typing import List
 from schemas import (
     AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
     AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate,
-    ContactStatus, FamilyDetails, PublicSettings, DashboardStats
+    ContactStatus, FamilyDetails, PublicSettings, DashboardStats,
+    AdhesionDiscountUpdate,
 )
 from auth import (
     create_access_token, get_current_admin, get_password_hash,
@@ -121,6 +122,14 @@ def invalidate_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = crud.invalidate_adhesion(db, code)
     if adhesion is None:
         raise HTTPException(status_code=404, detail="Adhesion not found or not validated")
+    return adhesion
+
+
+@app.put("/api/adhesions/{code}/discount", response_model=AdhesionSchema, dependencies=[Depends(get_current_admin)])
+def update_discount(code: str, discount: AdhesionDiscountUpdate, db: Session = Depends(get_db)):
+    adhesion = crud.update_adhesion_discount(db, code, discount)
+    if adhesion is None:
+        raise HTTPException(status_code=404, detail="Adhesion not found")
     return adhesion
 
 

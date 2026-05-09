@@ -51,9 +51,37 @@
               </li>
             </ul>
             <p v-else style="color: #999; margin: 0;">Aucune activité sélectionnée</p>
-            <div style="border-top: 1px solid var(--color-border); margin-top: 0.75rem; padding-top: 0.75rem; display: flex; justify-content: space-between; font-weight: 600;">
+
+            <!-- Réduction -->
+            <div v-if="adhesion.discount_amount" style="border-top: 1px solid var(--color-border); margin-top: 0.75rem; padding-top: 0.5rem; display: flex; justify-content: space-between; color: #c62828;">
+              <span>Réduction <span v-if="adhesion.discount_reason" style="font-weight: 400; font-size: 0.85rem;">({{ adhesion.discount_reason }})</span></span>
+              <span style="font-weight: 600;">-{{ adhesion.discount_amount.toFixed(2) }} €</span>
+            </div>
+
+            <div style="border-top: 1px solid var(--color-border); margin-top: 0.5rem; padding-top: 0.75rem; display: flex; justify-content: space-between; font-weight: 600;">
               <span>Total</span>
               <span>{{ totalCost.toFixed(2) }} €</span>
+            </div>
+
+            <!-- Formulaire réduction -->
+            <div style="border-top: 1px solid var(--color-border); margin-top: 0.75rem; padding-top: 0.75rem;">
+              <div v-if="!showDiscountForm" style="text-align: right;">
+                <Button :label="adhesion.discount_amount ? 'Modifier la réduction' : 'Ajouter une réduction'" icon="pi pi-percentage" severity="secondary" size="small" text @click="openDiscountForm" />
+              </div>
+              <div v-else style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                  <label style="font-size: 0.8rem; font-weight: 600;">Montant de la réduction (€)</label>
+                  <InputNumber v-model="discountAmount" :min="0" mode="currency" currency="EUR" locale="fr-FR" />
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                  <label style="font-size: 0.8rem; font-weight: 600;">Raison</label>
+                  <InputText v-model="discountReason" placeholder="Ex: réduction familiale" />
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <Button label="Enregistrer" icon="pi pi-check" severity="success" size="small" @click="saveDiscount" />
+                  <Button label="Annuler" icon="pi pi-times" severity="secondary" size="small" text @click="showDiscountForm = false" />
+                </div>
+              </div>
             </div>
           </template>
         </Card>
@@ -84,12 +112,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment } from '@/api';
+import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment, updateAdhesionDiscount } from '@/api';
 import type { Adhesion, Activity } from '@/types';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
+import InputNumber from 'primevue/inputnumber';
+import InputText from 'primevue/inputtext';
 
 const route = useRoute();
 const router = useRouter();
@@ -130,6 +160,27 @@ const handlePay = async (method: string) => {
 
 const showPaymentChoice = ref(false);
 
+const showDiscountForm = ref(false);
+const discountAmount = ref<number>(0);
+const discountReason = ref('');
+
+const openDiscountForm = () => {
+  discountAmount.value = adhesion.value?.discount_amount || 0;
+  discountReason.value = adhesion.value?.discount_reason || '';
+  showDiscountForm.value = true;
+};
+
+const saveDiscount = async () => {
+  if (!adhesion.value) return;
+  try {
+    adhesion.value = await updateAdhesionDiscount(adhesion.value.code, discountAmount.value || 0, discountReason.value);
+    showDiscountForm.value = false;
+    success.value = 'Réduction enregistrée.';
+  } catch {
+    error.value = 'Erreur lors de l\'enregistrement de la réduction.';
+  }
+};
+
 const getPrice = (activity: Activity) => {
   if (!adhesion.value) return 0;
   const isResident = adhesion.value.ville.toLowerCase() === 'fauverney';
@@ -139,7 +190,8 @@ const getPrice = (activity: Activity) => {
 const totalCost = computed(() => {
   if (!adhesion.value) return 0;
   const activitiesCost = adhesion.value.activities.reduce((sum, a) => sum + getPrice(a), 0);
-  return (adhesion.value.adhesion_amount || 0) + activitiesCost;
+  const subtotal = (adhesion.value.adhesion_amount || 0) + activitiesCost;
+  return Math.max(subtotal - (adhesion.value.discount_amount || 0), 0);
 });
 
 const getStatusLabel = (status: string) => {

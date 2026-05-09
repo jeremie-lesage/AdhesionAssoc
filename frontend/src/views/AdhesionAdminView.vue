@@ -52,7 +52,7 @@ const calculateTotalCost = (adhesion: Adhesion): number => {
     const price = isResident ? activity.resident_price : activity.external_price;
     return total + (price || 0);
   }, 0);
-  return (adhesion.adhesion_amount || 0) + activitiesCost;
+  return Math.max((adhesion.adhesion_amount || 0) + activitiesCost - (adhesion.discount_amount || 0), 0);
 };
 
 const adhesionsWithTotal = computed(() => {
@@ -227,6 +227,11 @@ onMounted(fetchAdhesions);
           <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li v-for="activity in data.activities" :key="`${data.code}-${activity.id}`">{{ activity.name }}</li>
           </ul>
+        </template>
+      </Column>
+      <Column field="discount_amount" header="Réduction" sortable>
+        <template #body="{ data }">
+          <span v-if="data.discount_amount" style="color: #c62828;">-{{ data.discount_amount }} €</span>
         </template>
       </Column>
       <Column field="totalCost" header="Coût Total" sortable>

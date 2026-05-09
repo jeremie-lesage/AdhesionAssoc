@@ -10,7 +10,7 @@ from models import Adhesion, Activity, AdminUser as Admin
 from schemas import (
     AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUserSchema,
     AdhesionSchema, ActivitySchema, AdminUserOut, ContactStatus, FamilyDetails,
-    DashboardStats, ActivityStats,
+    DashboardStats, ActivityStats, AdhesionDiscountUpdate,
 )
 
 
@@ -107,6 +107,17 @@ def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Opti
     db.commit()
     db.refresh(adhesion)
 
+    return AdhesionSchema.model_validate(adhesion)
+
+
+def update_adhesion_discount(db: Session, code: str, discount: AdhesionDiscountUpdate) -> Optional[AdhesionSchema]:
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
+    if adhesion is None:
+        return None
+    adhesion.discount_amount = discount.discount_amount
+    adhesion.discount_reason = discount.discount_reason
+    db.commit()
+    db.refresh(adhesion)
     return AdhesionSchema.model_validate(adhesion)
 
 
@@ -261,7 +272,8 @@ def _calculate_adhesion_cost(adhesion: Adhesion) -> float:
         is_resident = adhesion.ville.lower() == 'fauverney'
         price = activity.resident_price if is_resident else activity.external_price
         total_cost += price or 0
-    return total_cost
+    total_cost -= adhesion.discount_amount or 0
+    return max(total_cost, 0)
 
 
 def get_family_details_by_email(db: Session, email: str) -> Optional[FamilyDetails]:

@@ -30,6 +30,8 @@ export interface Adhesion {
   adhesion_amount: number;
   activities: Activity[];
   payment_method?: string;
+  discount_amount: number;
+  discount_reason: string | null;
   status: string;
 }
 
