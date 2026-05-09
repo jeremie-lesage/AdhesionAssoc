@@ -116,6 +116,14 @@ async def validate_adhesion(code: str, db: Session = Depends(get_db)):
     return adhesion
 
 
+@app.put("/api/adhesions/{code}/invalidate", response_model=AdhesionSchema, dependencies=[Depends(get_current_admin)])
+def invalidate_adhesion(code: str, db: Session = Depends(get_db)):
+    adhesion = crud.invalidate_adhesion(db, code)
+    if adhesion is None:
+        raise HTTPException(status_code=404, detail="Adhesion not found or not validated")
+    return adhesion
+
+
 @app.put("/api/adhesions/{code}/pay", response_model=AdhesionSchema, dependencies=[Depends(get_current_admin)])
 def pay_adhesion(code: str, payment_update: AdhesionPaymentUpdate, db: Session = Depends(get_db)):
     adhesion = crud.update_adhesion_payment(db, code, payment_update.payment_method)

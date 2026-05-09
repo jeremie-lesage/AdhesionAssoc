@@ -87,6 +87,16 @@ async def validate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
     return AdhesionSchema.model_validate(adhesion)
 
 
+def invalidate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'validated').first()
+    if adhesion is None:
+        return None
+    adhesion.status = 'pending'
+    db.commit()
+    db.refresh(adhesion)
+    return AdhesionSchema.model_validate(adhesion)
+
+
 def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Optional[AdhesionSchema]:
     adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
     if adhesion is None:

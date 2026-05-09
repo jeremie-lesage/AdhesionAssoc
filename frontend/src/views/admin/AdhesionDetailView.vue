@@ -59,9 +59,13 @@
         </Card>
       </div>
 
+      <Message v-if="success" severity="success" :closable="true" @close="success = null">{{ success }}</Message>
+      <Message v-if="error" severity="error" :closable="true" @close="error = null">{{ error }}</Message>
+
       <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
         <Button label="Retour" icon="pi pi-arrow-left" severity="secondary" @click="router.push({ name: 'admin-adhesions' })" />
         <Button v-if="adhesion.status !== 'paid'" label="Modifier" icon="pi pi-pencil" severity="info" @click="router.push({ name: 'adhesion', query: { code: adhesion.code, source: 'admin' } })" />
+        <Button v-if="adhesion.status === 'validated'" label="Repasser en attente" icon="pi pi-replay" severity="warn" @click="handleInvalidate" />
       </div>
     </template>
   </div>
@@ -70,15 +74,28 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getAdhesionByCode } from '@/api';
+import { getAdhesionByCode, invalidateAdhesion } from '@/api';
 import type { Adhesion, Activity } from '@/types';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
+import Message from 'primevue/message';
 
 const route = useRoute();
 const router = useRouter();
 const adhesion = ref<Adhesion | null>(null);
+const success = ref<string | null>(null);
+const error = ref<string | null>(null);
+
+const handleInvalidate = async () => {
+  if (!adhesion.value) return;
+  try {
+    adhesion.value = await invalidateAdhesion(adhesion.value.code);
+    success.value = 'La demande a été repassée en attente.';
+  } catch {
+    error.value = 'Erreur lors du changement de statut.';
+  }
+};
 
 const getPrice = (activity: Activity) => {
   if (!adhesion.value) return 0;

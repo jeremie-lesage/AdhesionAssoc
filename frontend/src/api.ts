@@ -104,6 +104,11 @@ export const validateAdhesion = async (code: string): Promise<Adhesion> => {
     return response.data;
 };
 
+export const invalidateAdhesion = async (code: string): Promise<Adhesion> => {
+    const response = await api.put(`/api/adhesions/${code}/invalidate`);
+    return response.data;
+};
+
 export const updateAdhesion = async (code: string, adhesion: AdhesionCreate): Promise<Adhesion> => {
     const response = await api.put(`/api/adhesions/${code}`, adhesion);
     return response.data;
