@@ -21,12 +21,8 @@
                @input="telInput?.setCustomValidity('')">
       </div>
       <div>
-        <label for="numero_rue">Numéro de la rue:</label>
-        <input type="text" id="numero_rue" v-model="formData.numero_rue">
-      </div>
-      <div>
-        <label for="nom_rue">Nom de la rue:</label>
-        <input type="text" id="nom_rue" v-model="formData.nom_rue" required autocomplete="address-line1">
+        <label for="nom_rue">Adresse:</label>
+        <input type="text" id="nom_rue" v-model="formData.nom_rue" required autocomplete="address-line1" placeholder="Numéro et nom de rue">
       </div>
       <div>
         <label for="code_postal">Code Postal:</label>
@@ -127,7 +123,7 @@ onMounted(async () => {
 const telPattern = /^(\+33|0)[1-9]\d{8}$/;
 
 const nextStep = () => {
-  for (const key of ['nom', 'prenom', 'numero_rue', 'nom_rue', 'code_postal', 'ville', 'telephone'] as const) {
+  for (const key of ['nom', 'prenom', 'nom_rue', 'code_postal', 'ville', 'telephone'] as const) {
     if (formData[key]) formData[key] = formData[key].trim();
   }
   if (formData.date_naissance) {
