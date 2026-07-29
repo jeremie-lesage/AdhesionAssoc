@@ -74,6 +74,7 @@ def get_config():
         bic=settings.BIC,
         bank=settings.BANK,
         postal_code_prefix=settings.POSTAL_CODE_PREFIX,
+        adult_age_threshold=settings.ADULT_AGE_THRESHOLD,
     )
 
 

@@ -227,3 +227,4 @@ class PublicSettings(BaseModel):
     bic: str
     bank: str
     postal_code_prefix: str
+    adult_age_threshold: int

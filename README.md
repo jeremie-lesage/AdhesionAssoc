@@ -80,6 +80,7 @@ Les variables d'environnement suivantes sont disponibles pour le backend (via fi
 |---|---|---|
 | `DATABASE_URL` | URL de connexion PostgreSQL | `postgresql://user:password@localhost:5432/foyer_rural_db` |
 | `POSTAL_CODE_PREFIX` | Préfixe de code postal autorisé (ex: `21` pour la Côte-d'Or) | `21` |
+| `ADULT_AGE_THRESHOLD` | Âge à partir duquel un adhérent est compté comme adulte dans les statistiques du tableau de bord | `16` |
 | `BREVO_API_KEY` | Clé API Brevo pour l'envoi d'emails | — |
 | `MAIL_FROM` | Adresse email d'expédition | — |
 | `IBAN` / `BIC` / `BANK` | Coordonnées bancaires affichées au récapitulatif | — |

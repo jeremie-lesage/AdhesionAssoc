@@ -5,6 +5,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session, selectinload
 
+from config import settings
 from email_service import send_validation_email
 from models import Activity, Adhesion
 from models import AdminUser as Admin
@@ -323,7 +324,7 @@ def get_dashboard_stats(db: Session) -> DashboardStats:
                 from datetime import datetime
                 birth = datetime.strptime(a.date_naissance, "%Y-%m-%d")
                 age = (datetime.now() - birth).days // 365
-                if age < 16:
+                if age < settings.ADULT_AGE_THRESHOLD:
                     children += 1
                 else:
                     adults += 1

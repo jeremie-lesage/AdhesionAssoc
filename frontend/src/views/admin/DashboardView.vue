@@ -34,7 +34,7 @@
               <dt>Contacts (emails uniques)</dt><dd>{{ stats.total_contacts }}</dd>
               <dt>Résidents Fauverney</dt><dd>{{ stats.residents }}</dd>
               <dt>Extérieurs</dt><dd>{{ stats.external }}</dd>
-              <dt>Enfants (&lt;16 ans)</dt><dd>{{ stats.children }}</dd>
+              <dt>Enfants (&lt;{{ adultAgeThreshold }} ans)</dt><dd>{{ stats.children }}</dd>
               <dt>Adultes</dt><dd>{{ stats.adults }}</dd>
             </dl>
           </template>
@@ -129,10 +129,18 @@ interface Stats {
 const eur = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 const stats = ref<Stats | null>(null);
+const adultAgeThreshold = ref(16);
 const loading = ref(true);
 const router = useRouter();
 
 onMounted(async () => {
+  try {
+    const res = await api.get('/api/config');
+    adultAgeThreshold.value = res.data.adult_age_threshold;
+  } catch {
+    // Le libellé garde sa valeur par défaut si la config n'est pas disponible
+  }
+
   try {
     const res = await api.get('/api/admin/stats');
     stats.value = res.data;

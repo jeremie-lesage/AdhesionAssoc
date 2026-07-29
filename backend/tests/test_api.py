@@ -44,7 +44,9 @@ class TestConfig:
 
         assert response.status_code == 200
         body = response.json()
-        assert set(body) == {"iban", "bic", "bank", "postal_code_prefix"}
+        assert set(body) == {
+            "iban", "bic", "bank", "postal_code_prefix", "adult_age_threshold",
+        }
 
 
 class TestToken:

@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 
 import crud
@@ -17,10 +19,20 @@ def _make_activity(db_session, name="Yoga", resident_price=100, external_price=1
 
 
 def _make_adhesion(db_session, email="test@example.com", nom="Dupont", prenom="Jean",
-                   ville="Fauverney", activities=None):
+                   ville="Fauverney", activities=None, date_naissance=None):
     data = AdhesionCreate(email=email, nom=nom, prenom=prenom, ville=ville,
-                          activities=activities or [])
+                          date_naissance=date_naissance, activities=activities or [])
     return crud.create_adhesion(db=db_session, adhesion=data)
+
+
+def _birthdate_for_age(age: int) -> str:
+    """Date de naissance donnant `age` révolus, au format attendu par la base.
+
+    Le calcul de `get_dashboard_stats` divise un nombre de jours par 365 : on
+    prend une marge de quelques jours pour rester du bon côté du seuil quelles
+    que soient les années bissextiles traversées.
+    """
+    return (date.today() - timedelta(days=age * 365 + 5)).strftime("%Y-%m-%d")
 
 
 # ─── Adhesion CRUD ───────────────────────────────────────────────
@@ -286,3 +298,44 @@ class TestContactsAndFamily:
 
         result = crud.get_family_details_by_email(db_session, "cotis@example.com")
         assert result.total_due == 115  # 15 (cotisation) + 100 (activité résident)
+
+
+# ─── Dashboard ───────────────────────────────────────────────────
+
+
+class TestDashboardAgeSplit:
+    """Répartition enfants / adultes, pilotée par settings.ADULT_AGE_THRESHOLD."""
+
+    def test_split_on_default_threshold(self, db_session):
+        _make_adhesion(db_session, email="petit@example.com",
+                       date_naissance=_birthdate_for_age(10))
+        _make_adhesion(db_session, email="grand@example.com",
+                       date_naissance=_birthdate_for_age(20))
+
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 1
+        assert stats.adults == 1
+
+    def test_threshold_is_configurable(self, db_session, monkeypatch):
+        _make_adhesion(db_session, email="ado@example.com",
+                       date_naissance=_birthdate_for_age(17))
+
+        # 17 ans : adulte avec le seuil par défaut (16)…
+        assert crud.get_dashboard_stats(db_session).adults == 1
+
+        # …enfant si l'association relève le seuil à 18.
+        monkeypatch.setattr(crud.settings, "ADULT_AGE_THRESHOLD", 18)
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 1
+        assert stats.adults == 0
+
+    def test_missing_or_invalid_birthdate_counts_as_adult(self, db_session):
+        _make_adhesion(db_session, email="vide@example.com", date_naissance=None)
+        _make_adhesion(db_session, email="casse@example.com", date_naissance="pas-une-date")
+
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 0
+        assert stats.adults == 2
