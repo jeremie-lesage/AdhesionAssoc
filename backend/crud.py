@@ -1,16 +1,26 @@
-import string
 import random
+import string
 from collections import defaultdict
 from datetime import date
-from typing import List, Optional
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func
 
-from models import Adhesion, Activity, AdminUser as Admin
+from sqlalchemy.orm import Session, selectinload
+
+from email_service import send_validation_email
+from models import Activity, Adhesion
+from models import AdminUser as Admin
 from schemas import (
-    AdhesionCreate, ActivityCreate, AdminUserCreate, AdminUserSchema,
-    AdhesionSchema, ActivitySchema, AdminUserOut, ContactStatus, FamilyDetails,
-    DashboardStats, ActivityStats, AdhesionDiscountUpdate,
+    ActivityCreate,
+    ActivitySchema,
+    ActivityStats,
+    AdhesionCreate,
+    AdhesionDiscountUpdate,
+    AdhesionSchema,
+    AdminUserCreate,
+    AdminUserOut,
+    AdminUserSchema,
+    ContactStatus,
+    DashboardStats,
+    FamilyDetails,
 )
 
 
@@ -20,7 +30,7 @@ def generate_random_code(length=12):
 
 
 # Adhesion CRUD
-def get_adhesions(db: Session) -> List[AdhesionSchema]:
+def get_adhesions(db: Session) -> list[AdhesionSchema]:
     adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).all()
     return [AdhesionSchema.model_validate(adhesion) for adhesion in adhesions]
 
@@ -45,16 +55,14 @@ def create_adhesion(db: Session, adhesion: AdhesionCreate) -> AdhesionSchema:
     return AdhesionSchema.model_validate(db_adhesion)
 
 
-from email_service import send_validation_email
-
-def get_adhesion_by_code(db: Session, code: str) -> Optional[AdhesionSchema]:
+def get_adhesion_by_code(db: Session, code: str) -> AdhesionSchema | None:
     adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
     return AdhesionSchema.model_validate(adhesion)
 
 
-async def validate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
+async def validate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
     adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
     if adhesion is None:
         return None
@@ -88,7 +96,7 @@ async def validate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
     return AdhesionSchema.model_validate(adhesion)
 
 
-def invalidate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
+def invalidate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
     adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'validated').first()
     if adhesion is None:
         return None
@@ -98,7 +106,7 @@ def invalidate_adhesion(db: Session, code: str) -> Optional[AdhesionSchema]:
     return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Optional[AdhesionSchema]:
+def update_adhesion_payment(db: Session, code: str, payment_method: str) -> AdhesionSchema | None:
     adhesion = db.query(Adhesion).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
@@ -110,7 +118,7 @@ def update_adhesion_payment(db: Session, code: str, payment_method: str) -> Opti
     return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion_discount(db: Session, code: str, discount: AdhesionDiscountUpdate) -> Optional[AdhesionSchema]:
+def update_adhesion_discount(db: Session, code: str, discount: AdhesionDiscountUpdate) -> AdhesionSchema | None:
     adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
@@ -121,7 +129,7 @@ def update_adhesion_discount(db: Session, code: str, discount: AdhesionDiscountU
     return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optional[AdhesionSchema]:
+def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> AdhesionSchema | None:
     db_adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if db_adhesion is None:
         return None
@@ -150,7 +158,7 @@ def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> Optiona
     return AdhesionSchema.model_validate(db_adhesion)
 
 
-def get_adherents_by_activity(db: Session, activity_id: int) -> List[AdhesionSchema]:
+def get_adherents_by_activity(db: Session, activity_id: int) -> list[AdhesionSchema]:
     activity = db.query(Activity).options(selectinload(Activity.adhesions).selectinload(Adhesion.activities)).filter(Activity.id == activity_id).first()
     if activity is None:
         raise ValueError("Activity not found")
@@ -168,7 +176,7 @@ def delete_adhesion(db: Session, code: str) -> bool:
 
 
 # Activity CRUD
-def get_activities(db: Session) -> List[ActivitySchema]:
+def get_activities(db: Session) -> list[ActivitySchema]:
     activities = db.query(Activity).options(selectinload(Activity.adhesions)).all()
     return [ActivitySchema.model_validate(activity) for activity in activities]
 
@@ -179,13 +187,13 @@ def create_activity(db: Session, activity: ActivityCreate) -> ActivitySchema:
     try:
         db.commit()
         db.refresh(db_activity)
-    except Exception:
+    except Exception as e:
         db.rollback()
-        raise ValueError(f"Activity with name {activity.name} already exists")
+        raise ValueError(f"Activity with name {activity.name} already exists") from e
     return ActivitySchema.model_validate(db_activity)
 
 
-def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> Optional[ActivitySchema]:
+def update_activity(db: Session, activity_id: int, activity: ActivityCreate) -> ActivitySchema | None:
     db_activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if db_activity is None:
         return None
@@ -208,13 +216,13 @@ def delete_activity(db: Session, activity_id: int) -> bool:
 
 
 # Admin CRUD
-def get_admin(db: Session, admin_id: int) -> Optional[AdminUserSchema]:
+def get_admin(db: Session, admin_id: int) -> AdminUserSchema | None:
     return db.query(Admin).filter(Admin.id == admin_id).first()
 
-def get_admin_by_username(db: Session, username: str) -> Optional[AdminUserSchema]:
+def get_admin_by_username(db: Session, username: str) -> AdminUserSchema | None:
     return db.query(Admin).filter(Admin.username == username).first()
 
-def get_admins(db: Session) -> List[AdminUserOut]:
+def get_admins(db: Session) -> list[AdminUserOut]:
     admins = db.query(Admin).all()
     return [AdminUserOut.model_validate(admin) for admin in admins]
 
@@ -225,7 +233,7 @@ def create_admin(db: Session, admin: AdminUserCreate) -> AdminUserOut:
     db.refresh(db_admin)
     return AdminUserOut.model_validate(db_admin)
 
-def update_admin(db: Session, admin_id: int, admin: AdminUserCreate) -> Optional[AdminUserOut]:
+def update_admin(db: Session, admin_id: int, admin: AdminUserCreate) -> AdminUserOut | None:
     db_admin = db.query(Admin).filter(Admin.id == admin_id).first()
     if db_admin is None:
         return None
@@ -244,7 +252,7 @@ def delete_admin(db: Session, admin_id: int) -> bool:
     return True
 
 
-def get_contacts_with_status(db: Session) -> List[ContactStatus]:
+def get_contacts_with_status(db: Session) -> list[ContactStatus]:
     adhesions = db.query(Adhesion).all()
     contacts: dict[str, dict] = defaultdict(lambda: {"statuses": [], "telephone": None})
     for adhesion in adhesions:
@@ -276,7 +284,7 @@ def _calculate_adhesion_cost(adhesion: Adhesion) -> float:
     return max(total_cost, 0)
 
 
-def get_family_details_by_email(db: Session, email: str) -> Optional[FamilyDetails]:
+def get_family_details_by_email(db: Session, email: str) -> FamilyDetails | None:
     adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.email == email).all()
 
     if not adhesions:
@@ -303,7 +311,7 @@ def get_dashboard_stats(db: Session) -> DashboardStats:
     pending = sum(1 for a in adhesions if a.status == 'pending')
     validated = sum(1 for a in adhesions if a.status == 'validated')
     paid = sum(1 for a in adhesions if a.status == 'paid')
-    contacts = len(set(a.email for a in adhesions))
+    contacts = len({a.email for a in adhesions})
     residents = sum(1 for a in adhesions if a.ville and a.ville.lower() == 'fauverney')
     external = len(adhesions) - residents
 

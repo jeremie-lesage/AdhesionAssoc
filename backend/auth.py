@@ -1,6 +1,5 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -26,7 +25,7 @@ def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -44,8 +43,8 @@ def verify_token(token: str, credentials_exception):
         if username is None:
             raise credentials_exception
         return username
-    except JWTError:
-        raise credentials_exception
+    except JWTError as e:
+        raise credentials_exception from e
 
 
 def get_current_admin(token: str = Depends(oauth2_scheme)):

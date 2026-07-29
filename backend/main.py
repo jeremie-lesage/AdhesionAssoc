@@ -1,30 +1,34 @@
-from fastapi import FastAPI, HTTPException, Request, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
 import os
 import secrets
 import string
-from sqlalchemy.orm import Session
-from typing import List
-
-from schemas import (
-    AdhesionSchema, AdhesionCreate, ActivitySchema, ActivityCreate,
-    AdminUserCreate, AdminUserOut, AdhesionPaymentUpdate,
-    ContactStatus, FamilyDetails, PublicSettings, DashboardStats,
-    AdhesionDiscountUpdate,
-)
-from auth import (
-    create_access_token, get_current_admin, get_password_hash,
-    verify_password
-)
-from rate_limiter import rate_limit
-from database import create_tables, get_db
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from datetime import datetime
 
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
 import crud
+from auth import create_access_token, get_current_admin, get_password_hash, verify_password
 from config import settings
+from database import create_tables, get_db
+from rate_limiter import rate_limit
+from schemas import (
+    ActivityCreate,
+    ActivitySchema,
+    AdhesionCreate,
+    AdhesionDiscountUpdate,
+    AdhesionPaymentUpdate,
+    AdhesionSchema,
+    AdminUserCreate,
+    AdminUserOut,
+    ContactStatus,
+    DashboardStats,
+    FamilyDetails,
+    PublicSettings,
+)
 
 app = FastAPI()
 
@@ -98,7 +102,7 @@ def create_adhesion(adhesion: AdhesionCreate, db: Session = Depends(get_db)):
     try:
         return crud.create_adhesion(db, adhesion)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.get("/api/adhesions/{code}", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
@@ -149,9 +153,9 @@ def update_adhesion(code: str, adhesion: AdhesionCreate, db: Session = Depends(g
             raise HTTPException(status_code=404, detail="AdhesionSchema not found")
         return updated_adhesion
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}") from e
 
 
 @app.get("/api/adhesions/{code}/receipt", response_class=HTMLResponse)
@@ -195,7 +199,7 @@ def get_adherents_by_activity(activity_id: int, db: Session = Depends(get_db)):
     try:
         return crud.get_adherents_by_activity(db, activity_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ActivitySchema Endpoints
@@ -217,7 +221,7 @@ def create_activity(activity: ActivityCreate, db: Session = Depends(get_db)):
     try:
         return crud.create_activity(db, activity)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.delete("/api/activities/{activity_id}", status_code=204, dependencies=[Depends(get_current_admin)])
@@ -258,7 +262,7 @@ def delete_admin(admin_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Admin not found")
 
 
-@app.get("/api/admin/contacts", response_model=List[ContactStatus], dependencies=[Depends(get_current_admin)])
+@app.get("/api/admin/contacts", response_model=list[ContactStatus], dependencies=[Depends(get_current_admin)])
 def get_contacts(db: Session = Depends(get_db)):
     return crud.get_contacts_with_status(db)
 

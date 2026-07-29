@@ -1,5 +1,7 @@
 *.swp
 *.db
 .venv/
+.pytest_cache/
+.ruff_cache/
 docker-entrypoint-initdb.d
 .mise.toml

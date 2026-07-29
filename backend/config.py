@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     BREVO_API_KEY: str = "YOUR_API_V3_KEY"
     MAIL_FROM: str = "your-email@example.com"

@@ -19,4 +19,34 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.0",
+    "pytest-cov>=6.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+# Les tests importent les modules à plat (`from models import ...`) : pythonpath
+# remplace les `sys.path.insert` manuels dans les fichiers de tests.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "alembic/*", ".venv/*"]
+
+[tool.ruff]
+line-length = 100
+# Les migrations générées par Alembic ne sont pas du code à maintenir à la main.
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# Sélection explicite : les règles par défaut de ruff varient d'une version à
+# l'autre, on fixe le périmètre pour que `mise run lint` soit reproductible.
+# E4/E7/E9 seulement (comme forge-communes) : le style de mise en forme reste
+# du ressort de `mise run format`, pas du lint bloquant.
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C4"]
+ignore = [
+    # `Depends()` / `Query()` en valeur par défaut est l'idiome FastAPI.
+    "B008",
 ]

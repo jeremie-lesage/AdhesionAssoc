@@ -1,29 +1,10 @@
 import pytest
-import sys
-import os
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from models import Base, Activity, Adhesion
-from schemas import AdhesionCreate, ActivityCreate, AdminUserCreate
 import crud
+from models import Activity, Adhesion
+from schemas import ActivityCreate, AdhesionCreate, AdminUserCreate
 
-DATABASE_URL = "sqlite:///:memory:"
-
-
-@pytest.fixture(scope="function")
-def db_session():
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-    Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(engine)
+# La fixture `db_session` vient de tests/conftest.py.
 
 
 def _make_activity(db_session, name="Yoga", resident_price=100, external_price=120, max_participants=0):

@@ -1,5 +1,6 @@
-from fastapi import Request, HTTPException, status
 import time
+
+from fastapi import HTTPException, Request, status
 
 RATE_LIMIT_WINDOW = 60  # seconds
 RATE_LIMIT_MAX_REQUESTS = 5  # max requests per window

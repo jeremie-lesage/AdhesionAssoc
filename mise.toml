@@ -7,11 +7,24 @@ node = "latest"
 PROJECT_NAME = "{{ config_root | basename }}"
 DATABASE_URL = "postgresql://user:password@localhost:5432/foyer_rural_db"
 
+# ─── Installation ────────────────────────────────────────────────
+
 [tasks.install]
-description = "Install dependencies"
+description = "Install all dependencies (backend + frontend)"
 alias = "i"
+depends = ["install:backend", "install:frontend"]
+
+[tasks."install:backend"]
+description = "Install backend dependencies (uv sync, dev group included)"
 dir = "backend"
 run = "uv sync"
+
+[tasks."install:frontend"]
+description = "Install frontend dependencies (npm ci)"
+dir = "frontend"
+run = "npm ci"
+
+# ─── Base de données de développement ────────────────────────────
 
 [tasks."db:start"]
 description = "Start PostgreSQL dev container"
@@ -43,9 +56,138 @@ docker volume rm foyer-dev-pgdata 2>/dev/null || true
 echo "Dev database volume removed"
 """
 
+[tasks."db:migrate"]
+description = "Apply Alembic migrations to the dev database"
+depends = ["db:start"]
+dir = "backend"
+run = "uv run alembic upgrade head"
+
+[tasks."db:revision"]
+description = "Autogenerate a migration (usage: mise run db:revision -- -m \"message\")"
+depends = ["db:start"]
+dir = "backend"
+run = "uv run alembic revision --autogenerate"
+
+# ─── Serveurs de développement ───────────────────────────────────
+
 [tasks.serve]
 description = "Start PostgreSQL + backend server"
 alias = "s"
 depends = ["db:start"]
 dir = "backend"
 run = "uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+[tasks."serve:frontend"]
+description = "Start the Vite dev server (proxies /api to :8000)"
+dir = "frontend"
+run = "npm run dev"
+
+# ─── Tests ───────────────────────────────────────────────────────
+
+[tasks.test]
+description = "Run the whole test suite (backend + frontend)"
+alias = "t"
+depends = ["test:backend", "test:frontend"]
+
+[tasks."test:backend"]
+description = "Run backend tests (pytest)"
+dir = "backend"
+# Les tests tournent sur SQLite en mémoire : on neutralise le DATABASE_URL
+# du bloc [env] pour qu'un test ne puisse jamais toucher la base de dev.
+env = { DATABASE_URL = "sqlite://" }
+run = "uv run pytest"
+
+[tasks."test:frontend"]
+description = "Run frontend unit tests (vitest, single run)"
+dir = "frontend"
+run = "npm run test:run"
+
+[tasks."test:watch"]
+description = "Run frontend tests in watch mode"
+dir = "frontend"
+run = "npm run test"
+
+[tasks."test:cov"]
+description = "Run the whole test suite with coverage reports"
+depends = ["test:cov:backend", "test:cov:frontend"]
+
+[tasks."test:cov:backend"]
+description = "Backend tests with coverage (terminal + HTML in backend/htmlcov)"
+dir = "backend"
+env = { DATABASE_URL = "sqlite://" }
+run = "uv run pytest --cov --cov-report=term-missing --cov-report=html"
+
+[tasks."test:cov:frontend"]
+description = "Frontend tests with coverage (frontend/coverage)"
+dir = "frontend"
+run = "npm run test:cov"
+
+# ─── Qualité de code ─────────────────────────────────────────────
+
+[tasks.lint]
+description = "Lint everything (ruff + eslint)"
+depends = ["lint:backend", "lint:frontend"]
+
+[tasks."lint:backend"]
+description = "Lint backend code (ruff)"
+dir = "backend"
+run = "uv run ruff check ."
+
+[tasks."lint:frontend"]
+description = "Lint frontend code (eslint)"
+dir = "frontend"
+run = "npx eslint ."
+
+[tasks."type-check"]
+description = "Type-check the frontend (vue-tsc)"
+dir = "frontend"
+run = "npm run type-check"
+
+[tasks.format]
+description = "Reformat everything (ruff format + prettier) — modifies files"
+depends = ["format:backend", "format:frontend"]
+
+[tasks."format:backend"]
+description = "Reformat backend code (ruff format)"
+dir = "backend"
+run = "uv run ruff format ."
+
+[tasks."format:frontend"]
+description = "Reformat frontend code (prettier)"
+dir = "frontend"
+run = "npm run format"
+
+[tasks."format:check"]
+description = "Report formatting drift without touching files"
+depends = ["format:check:backend", "format:check:frontend"]
+
+[tasks."format:check:backend"]
+description = "Report backend formatting drift (ruff format --check)"
+dir = "backend"
+run = "uv run ruff format --check ."
+
+[tasks."format:check:frontend"]
+description = "Report frontend formatting drift (prettier --check)"
+dir = "frontend"
+run = "npx prettier --check src"
+
+# ─── Porte de validation ─────────────────────────────────────────
+
+[tasks.check]
+description = "Full gate before committing: lint + type-check + tests"
+depends = ["lint", "type-check", "test"]
+
+# ─── Build & production ──────────────────────────────────────────
+
+[tasks."build:frontend"]
+description = "Type-check and build the frontend for production"
+dir = "frontend"
+run = "npm run build"
+
+[tasks."docker:up"]
+description = "Start the production compose stack"
+run = "docker compose -f docker/compose.yml up -d --build"
+
+[tasks."docker:down"]
+description = "Stop the production compose stack"
+run = "docker compose -f docker/compose.yml down"

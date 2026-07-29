@@ -2,7 +2,7 @@
 import {ref, onMounted, computed} from 'vue';
 import {useRouter} from 'vue-router';
 import {getAdhesions, deleteAdhesion, validateAdhesion, updateAdhesionPayment} from '../api';
-import type {Adhesion, Activity} from '../types';
+import type {Adhesion} from '../types';
 import { useConfirm } from 'primevue/useconfirm';
 import PaymentModal from '../components/PaymentModal.vue';
 import DataTable from 'primevue/datatable';
@@ -39,7 +39,7 @@ const fetchAdhesions = async () => {
   try {
     loading.value = true;
     adhesions.value = await getAdhesions();
-  } catch (err) {
+  } catch {
     error.value = 'Erreur lors de la récupération des adhésions.';
   } finally {
     loading.value = false;
@@ -118,7 +118,7 @@ const exportToCSV = () => {
     adhesion.totalCost.toFixed(2)
   ]);
 
-  let csvContent = "data:text/csv;charset=utf-8,"
+  const csvContent = "data:text/csv;charset=utf-8,"
       + headers.join(",") + "\n"
       + rows.map(e => e.join(",")).join("\n");
 
@@ -147,7 +147,7 @@ const handleValidate = async (code: string) => {
     const updated = await validateAdhesion(code);
     updateAdhesionInList(code, updated);
     success.value = `L'adhésion ${code} a été validée.`;
-  } catch (err) {
+  } catch {
     error.value = `Erreur lors de la validation de l'adhésion ${code}.`;
   }
 };
@@ -164,7 +164,7 @@ const processPayment = async (paymentMethod: 'Chèque' | 'Virement') => {
     const updated = await updateAdhesionPayment(selectedAdhesionCode.value, paymentMethod);
     updateAdhesionInList(selectedAdhesionCode.value, updated);
     success.value = `L'adhésion ${selectedAdhesionCode.value} a été marquée comme payée.`;
-  } catch (err) {
+  } catch {
     error.value = `Erreur lors de la mise à jour du paiement pour l'adhésion ${selectedAdhesionCode.value}.`;
   } finally {
     isPaymentModalVisible.value = false;
@@ -189,7 +189,7 @@ const removeAdhesion = (code: string) => {
         await deleteAdhesion(code);
         adhesions.value = adhesions.value.filter(adhesion => adhesion.code !== code);
         success.value = `L'adhésion ${code} a été supprimée.`;
-      } catch (err) {
+      } catch {
         error.value = "Erreur lors de la suppression de l'adhésion.";
       }
     },

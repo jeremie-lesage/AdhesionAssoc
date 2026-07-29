@@ -1,6 +1,6 @@
 from datetime import date, time
+
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
 
 
 # Pydantic models for Activity
@@ -32,17 +32,17 @@ class ActivityBase(BaseModel):
     :type max_participants: Optional[int]
     """
     name: str
-    description: Optional[str] = None
-    location: Optional[str] = None
-    resident_price: Optional[float] = None
-    external_price: Optional[float] = None
-    is_child_activity: Optional[bool] = False
-    is_adult_activity: Optional[bool] = False
-    max_participants: Optional[int] = 0
-    registration_deadline: Optional[date] = None
-    day_of_week: Optional[int] = None
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    description: str | None = None
+    location: str | None = None
+    resident_price: float | None = None
+    external_price: float | None = None
+    is_child_activity: bool | None = False
+    is_adult_activity: bool | None = False
+    max_participants: int | None = 0
+    registration_deadline: date | None = None
+    day_of_week: int | None = None
+    start_time: time | None = None
+    end_time: time | None = None
 
 
 class ActivityCreate(ActivityBase):
@@ -66,7 +66,7 @@ class ActivitySchema(ActivityBase):
         :type current_participants: Optional[int]
     """
     id: int
-    current_participants: Optional[int] = 0
+    current_participants: int | None = 0
 
     class Config:
         from_attributes = True
@@ -103,22 +103,22 @@ class AdhesionBase(BaseModel):
     :type payment_method: Optional[str]
     """
     email: EmailStr
-    telephone: Optional[str] = None
-    nom: Optional[str] = None
-    prenom: Optional[str] = None
-    date_naissance: Optional[str] = None
-    numero_rue: Optional[str] = None
-    nom_rue: Optional[str] = None
-    code_postal: Optional[str] = None
-    ville: Optional[str] = None
-    adhesion_amount: Optional[float] = None
-    payment_method: Optional[str] = None
-    discount_amount: Optional[float] = 0
-    discount_reason: Optional[str] = None
+    telephone: str | None = None
+    nom: str | None = None
+    prenom: str | None = None
+    date_naissance: str | None = None
+    numero_rue: str | None = None
+    nom_rue: str | None = None
+    code_postal: str | None = None
+    ville: str | None = None
+    adhesion_amount: float | None = None
+    payment_method: str | None = None
+    discount_amount: float | None = 0
+    discount_reason: str | None = None
 
 
 class AdhesionCreate(AdhesionBase):
-    activities: Optional[List[int]] = []
+    activities: list[int] | None = []
     pass
 
 
@@ -126,7 +126,7 @@ class AdhesionSchema(AdhesionBase):
     id: int
     code: str
     status: str
-    activities: List[ActivitySchema] = []
+    activities: list[ActivitySchema] = []
 
     class Config:
         from_attributes = True
@@ -138,7 +138,7 @@ class AdhesionPaymentUpdate(BaseModel):
 
 class AdhesionDiscountUpdate(BaseModel):
     discount_amount: float
-    discount_reason: Optional[str] = None
+    discount_reason: str | None = None
 
 
 # Pydantic models for Admin
@@ -185,12 +185,12 @@ class AdminLogin(BaseModel):
 class ContactStatus(BaseModel):
     email: EmailStr
     status: str
-    telephone: Optional[str] = None
+    telephone: str | None = None
 
 
 class FamilyDetails(BaseModel):
     email: EmailStr
-    adherents: List[AdhesionSchema]
+    adherents: list[AdhesionSchema]
     total_due: float
 
 
@@ -219,7 +219,7 @@ class DashboardStats(BaseModel):
     adults: int
     revenue_expected: float
     revenue_collected: float
-    activities: List[ActivityStats]
+    activities: list[ActivityStats]
 
 
 class PublicSettings(BaseModel):

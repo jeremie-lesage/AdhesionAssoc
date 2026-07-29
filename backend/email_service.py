@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
+
 from config import settings
-from pathlib import Path
-import os
 
 # Configure API key authorization: api-key
 configuration = sib_api_v3_sdk.Configuration()
@@ -13,7 +14,7 @@ api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(co
 
 def render_template(template_name: str, context: dict) -> str:
     template_path = Path(__file__).parent / 'templates' / template_name
-    with open(template_path, 'r') as f:
+    with open(template_path) as f:
         template_str = f.read()
     
     for key, value in context.items():
@@ -45,4 +46,4 @@ async def send_validation_email(email_to: str, subject: str, body: dict):
         api_response = api_instance.send_transac_email(send_smtp_email)
         print(api_response)
     except ApiException as e:
-        print("Exception when calling TransactionalEmailsApi->send_transac_email: %s\n" % e)
+        print(f"Exception when calling TransactionalEmailsApi->send_transac_email: {e}\n")
