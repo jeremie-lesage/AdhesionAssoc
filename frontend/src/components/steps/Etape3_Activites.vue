@@ -77,6 +77,7 @@ import {ref, onMounted, computed, watch} from 'vue';
 import {useFormStore} from '@/stores/form';
 import api from '@/api';
 import type {Activity} from '@/types';
+import { activityPrice } from '@/pricing';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -164,13 +165,7 @@ const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString('fr-FR');
 };
 
-const getPrice = (activity: Activity) => {
-  if (formData.ville && formData.ville.toLowerCase() === 'fauverney') {
-    return activity.resident_price;
-  } else {
-    return activity.external_price;
-  }
-};
+const getPrice = (activity: Activity) => activityPrice(activity, formData.ville);
 </script>
 
 <style scoped>

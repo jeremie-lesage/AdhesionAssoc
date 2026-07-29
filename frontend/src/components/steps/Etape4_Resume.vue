@@ -48,6 +48,7 @@ import {useFormStore} from '@/stores/form';
 import api from '@/api';
 import {useRouter} from 'vue-router';
 import type {Activity} from '@/types';
+import { activitiesCost, activityPrice } from '@/pricing';
 import ConfirmationModal from '../ConfirmationModal.vue';
 
 const store = useFormStore();
@@ -83,13 +84,7 @@ const selectedActivitiesDetails = computed<Activity[]>(() => {
   return formData.activities;
 });
 
-const getPrice = (activity: Activity) => {
-  if (formData.ville && formData.ville.toLowerCase() === 'fauverney') {
-    return activity.resident_price;
-  } else {
-    return activity.external_price;
-  }
-};
+const getPrice = (activity: Activity) => activityPrice(activity, formData.ville);
 
 const formattedDateNaissance = computed(() => {
   if (!formData.date_naissance) return '';
@@ -98,10 +93,7 @@ const formattedDateNaissance = computed(() => {
 });
 
 const totalCost = computed(() => {
-  const activitiesTotal = selectedActivitiesDetails.value.reduce((sum, activity) => {
-    return sum + (getPrice(activity) || 0);
-  }, 0);
-  return activitiesTotal + (formData.adhesion_amount || 0);
+  return activitiesCost(selectedActivitiesDetails.value, formData.ville) + (formData.adhesion_amount || 0);
 });
 
 const prevStep = () => {

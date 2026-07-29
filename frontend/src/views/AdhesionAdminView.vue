@@ -3,6 +3,7 @@ import {ref, onMounted, computed} from 'vue';
 import {useRouter} from 'vue-router';
 import {getAdhesions, deleteAdhesion, validateAdhesion, updateAdhesionPayment} from '../api';
 import type {Adhesion} from '../types';
+import { adhesionTotal } from '@/pricing';
 import { useConfirm } from 'primevue/useconfirm';
 import PaymentModal from '../components/PaymentModal.vue';
 import DataTable from 'primevue/datatable';
@@ -46,14 +47,7 @@ const fetchAdhesions = async () => {
   }
 };
 
-const calculateTotalCost = (adhesion: Adhesion): number => {
-  const isResident = adhesion.ville.toLowerCase() === 'fauverney';
-  const activitiesCost = adhesion.activities.reduce((total, activity) => {
-    const price = isResident ? activity.resident_price : activity.external_price;
-    return total + (price || 0);
-  }, 0);
-  return Math.max((adhesion.adhesion_amount || 0) + activitiesCost - (adhesion.discount_amount || 0), 0);
-};
+const calculateTotalCost = (adhesion: Adhesion): number => adhesionTotal(adhesion);
 
 const adhesionsWithTotal = computed(() => {
   return adhesions.value.map(adhesion => ({

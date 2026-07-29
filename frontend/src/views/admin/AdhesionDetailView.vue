@@ -114,6 +114,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment, updateAdhesionDiscount } from '@/api';
 import type { Adhesion, Activity } from '@/types';
+import { activityPrice, adhesionTotal } from '@/pricing';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
@@ -183,15 +184,12 @@ const saveDiscount = async () => {
 
 const getPrice = (activity: Activity) => {
   if (!adhesion.value) return 0;
-  const isResident = adhesion.value.ville.toLowerCase() === 'fauverney';
-  return (isResident ? activity.resident_price : activity.external_price) || 0;
+  return activityPrice(activity, adhesion.value.ville) ?? 0;
 };
 
 const totalCost = computed(() => {
   if (!adhesion.value) return 0;
-  const activitiesCost = adhesion.value.activities.reduce((sum, a) => sum + getPrice(a), 0);
-  const subtotal = (adhesion.value.adhesion_amount || 0) + activitiesCost;
-  return Math.max(subtotal - (adhesion.value.discount_amount || 0), 0);
+  return adhesionTotal(adhesion.value);
 });
 
 const getStatusLabel = (status: string) => {
