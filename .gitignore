@@ -5,3 +5,15 @@
 .ruff_cache/
 docker-entrypoint-initdb.d
 .mise.toml
+
+# Dumps de base : contiennent les données personnelles des adhérents
+# (noms, emails, adresses). Ne jamais versionner.
+*.sql
+*.sql.gz
+*.dump
+
+# Secrets d'environnement. Le modèle sans valeurs est docker/.env.example.
+.env
+.env.*
+!.env.example
+docker/.env

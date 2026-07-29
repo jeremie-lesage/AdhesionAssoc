@@ -98,14 +98,14 @@ Pour lancer l'ensemble de l'application (frontend, backend, base de données Pos
 1.  **Assurez-vous d'avoir Docker et Docker Compose installés sur votre machine.**
 
 2.  **Créer le fichier `.env` :**
-    Créez un fichier nommé `.env` dans le répertoire `docker/` avec le contenu suivant (vous pouvez modifier les valeurs) :
+    Copiez le modèle et renseignez les valeurs :
+    ```sh
+    cp docker/.env.example docker/.env
     ```
-    POSTGRES_DB=foyer_db
-    POSTGRES_USER=user
-    POSTGRES_PASSWORD=password
-    PGADMIN_DEFAULT_EMAIL=admin@example.com
-    PGADMIN_DEFAULT_PASSWORD=admin
-    ```
+    `docker/.env` contient les secrets de production (mot de passe PostgreSQL,
+    `SECRET_KEY` de signature des JWT, clé API Brevo, identifiants FTP de
+    sauvegarde) : il est ignoré par git et ne doit jamais y être ajouté.
+    Générer la `SECRET_KEY` avec `openssl rand -hex 32`.
 
 3.  **Arrêter et supprimer les conteneurs et volumes existants (recommandé pour une nouvelle installation ou migration) :**
     Placez-vous à la racine du projet et exécutez la commande suivante :
