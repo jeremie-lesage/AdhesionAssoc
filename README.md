@@ -13,22 +13,22 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
 ### Backend
 
 1.  **Se placer dans le répertoire du backend :**
-    ```bash
+    ```sh
     cd backend
     ```
 
 2.  **Installer les dépendances :**
-    ```bash
+    ```sh
     uv sync
     ```
 
 3.  **Appliquer les migrations de base de données :**
-    ```bash
+    ```sh
     uv run alembic upgrade head
     ```
 
 4.  **Lancer le serveur de développement :**
-    ```bash
+    ```sh
     uv run uvicorn main:app --host 0.0.0.0 --port 8000
     ```
     Le backend sera alors accessible à l'adresse `http://localhost:8000`.
@@ -37,17 +37,17 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
 ### Frontend
 
 1.  **Se placer dans le répertoire du frontend :**
-    ```bash
+    ```sh
     cd frontend
     ```
 
 2.  **Installer les dépendances :**
-    ```bash
+    ```sh
     npm install
     ```
 
 3.  **Lancer le serveur de développement :**
-    ```bash
+    ```sh
     npm run dev
     ```
     Le frontend sera alors accessible à l'adresse `http://localhost:5173`.
@@ -56,7 +56,7 @@ Ce projet est une application web permettant de gérer les demandes d'adhésion 
 
 Les migrations de schéma sont gérées par [Alembic](https://alembic.sqlalchemy.org/). Les commandes s'exécutent depuis le répertoire `backend/` :
 
-```bash
+```sh
 # Générer une nouvelle migration après modification de models.py
 uv run alembic revision --autogenerate -m "description du changement"
 
@@ -109,14 +109,14 @@ Pour lancer l'ensemble de l'application (frontend, backend, base de données Pos
 
 3.  **Arrêter et supprimer les conteneurs et volumes existants (recommandé pour une nouvelle installation ou migration) :**
     Placez-vous à la racine du projet et exécutez la commande suivante :
-    ```bash
+    ```sh
     docker compose -f docker/compose.yml down -v
     ```
     Ceci supprimera les anciens volumes, y compris l'ancienne base de données SQLite si elle existait.
 
 4.  **Lancer les services :**
     Placez-vous à la racine du projet et exécutez la commande suivante :
-    ```bash
+    ```sh
     docker compose -f docker/compose.yml up -d --build
     ```
     Cette commande va :
@@ -135,6 +135,32 @@ Pour lancer l'ensemble de l'application (frontend, backend, base de données Pos
 
 7.  **Arrêter les services :**
     Pour arrêter tous les conteneurs, utilisez la commande :
-    ```bash
+    ```sh
     docker compose -f docker/compose.yml down
     ```
+
+### Backup de la base de données
+
+Les backups sont automatique, pour lister les backup :
+
+```sh
+docker compose -f docker/compose.yml exec db_backup ls /backups
+docker compose -f docker/compose.yml cp db_backup:/backups/db_backup_20260508_212601.sql.gz .
+```
+
+pour récupérer un backup
+
+```sh
+docker compose -f docker/compose.yml cp db_backup:/backups/db_backup_20260508_212601.sql.gz .
+```
+
+
+pour faire une copie locale
+
+```sh
+docker compose -f docker/compose.yml exec db \
+  psql -U user -d postgres -c 'CREATE DATABASE "foyer_db_2026-07-29";'
+
+docker compose -f docker/compose.yml exec db \
+  sh -c 'pg_dump -U user foyer_db | psql -U user -d "foyer_db_2026-07-29"'
+```
