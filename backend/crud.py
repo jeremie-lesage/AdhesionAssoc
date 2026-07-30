@@ -14,8 +14,8 @@ from schemas import (
     ActivityCreate,
     ActivitySchema,
     ActivityStats,
-    AdhesionCreate,
     AdhesionDiscountUpdate,
+    AdhesionInput,
     AdhesionSchema,
     AdminUserCreate,
     AdminUserOut,
@@ -39,7 +39,7 @@ def get_adhesions(db: Session) -> list[AdhesionSchema]:
     return [AdhesionSchema.model_validate(adhesion) for adhesion in adhesions]
 
 
-def create_adhesion(db: Session, adhesion: AdhesionCreate) -> AdhesionSchema:
+def create_adhesion(db: Session, adhesion: AdhesionInput) -> AdhesionSchema:
     adhesion_data = adhesion.model_dump(exclude={'activities'})
     db_adhesion = Adhesion(**adhesion_data, code=generate_random_code())
 
@@ -195,7 +195,7 @@ def update_adhesion_discount(db: Session, code: str, discount: AdhesionDiscountU
     return AdhesionSchema.model_validate(adhesion)
 
 
-def update_adhesion(db: Session, code: str, adhesion: AdhesionCreate) -> AdhesionSchema | None:
+def update_adhesion(db: Session, code: str, adhesion: AdhesionInput) -> AdhesionSchema | None:
     db_adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if db_adhesion is None:
         return None

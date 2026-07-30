@@ -21,8 +21,8 @@ from rate_limiter import rate_limit
 from schemas import (
     ActivityCreate,
     ActivitySchema,
-    AdhesionCreate,
     AdhesionDiscountUpdate,
+    AdhesionInput,
     AdhesionPaymentUpdate,
     AdhesionSchema,
     AdminUserCreate,
@@ -112,7 +112,7 @@ def list_adhesions(db: Session = Depends(get_db)):
 
 
 @app.post("/api/adhesions", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
-def create_adhesion(adhesion: AdhesionCreate, db: Session = Depends(get_db)):
+def create_adhesion(adhesion: AdhesionInput, db: Session = Depends(get_db)):
     try:
         return crud.create_adhesion(db, adhesion)
     except ValueError as e:
@@ -173,7 +173,7 @@ def pay_adhesion(code: str, payment_update: AdhesionPaymentUpdate, db: Session =
 
 
 @app.put("/api/adhesions/{code}", response_model=AdhesionSchema, dependencies=[Depends(rate_limit)])
-def update_adhesion(code: str, adhesion: AdhesionCreate, db: Session = Depends(get_db)):
+def update_adhesion(code: str, adhesion: AdhesionInput, db: Session = Depends(get_db)):
     try:
         updated_adhesion = crud.update_adhesion(db, code, adhesion)
         if updated_adhesion is None:

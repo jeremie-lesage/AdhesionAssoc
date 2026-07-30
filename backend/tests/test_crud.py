@@ -4,7 +4,7 @@ import pytest
 
 import crud
 from models import Activity, Adhesion
-from schemas import ActivityCreate, AdhesionCreate, AdminUserCreate
+from schemas import ActivityCreate, AdhesionInput, AdminUserCreate
 
 # La fixture `db_session` vient de tests/conftest.py.
 
@@ -20,7 +20,7 @@ def _make_activity(db_session, name="Yoga", resident_price=100, external_price=1
 
 def _make_adhesion(db_session, email="test@example.com", nom="Dupont", prenom="Jean",
                    ville="Fauverney", activities=None, date_naissance=None):
-    data = AdhesionCreate(email=email, nom=nom, prenom=prenom, ville=ville,
+    data = AdhesionInput(email=email, nom=nom, prenom=prenom, ville=ville,
                           date_naissance=date_naissance, activities=activities or [])
     return crud.create_adhesion(db=db_session, adhesion=data)
 
@@ -93,7 +93,7 @@ class TestUpdateAdhesion:
         a2 = _make_activity(db_session, "Danse")
         created = _make_adhesion(db_session, activities=[a1.id])
 
-        update = AdhesionCreate(email="test@example.com", nom="Modifié", activities=[a2.id])
+        update = AdhesionInput(email="test@example.com", nom="Modifié", activities=[a2.id])
         result = crud.update_adhesion(db_session, created.code, update)
 
         assert result.nom == "Modifié"
@@ -105,14 +105,14 @@ class TestUpdateAdhesion:
         a2 = _make_activity(db_session, "Danse")
         created = _make_adhesion(db_session, activities=[a1.id, a2.id])
 
-        update = AdhesionCreate.model_construct(email="test@example.com", nom="Modifié")
+        update = AdhesionInput.model_construct(email="test@example.com", nom="Modifié")
         result = crud.update_adhesion(db_session, created.code, update)
 
         assert result.nom == "Modifié"
         assert len(result.activities) == 2
 
     def test_update_not_found(self, db_session):
-        update = AdhesionCreate(email="x@example.com")
+        update = AdhesionInput(email="x@example.com")
         result = crud.update_adhesion(db_session, "INEXISTANT", update)
         assert result is None
 
@@ -122,7 +122,7 @@ class TestUpdateAdhesion:
         db_adhesion.status = "validated"
         db_session.commit()
 
-        update = AdhesionCreate(email="test@example.com", nom="Nouveau")
+        update = AdhesionInput(email="test@example.com", nom="Nouveau")
         with pytest.raises(ValueError, match="Cannot update a validated adhesion"):
             crud.update_adhesion(db_session, created.code, update)
 
@@ -292,7 +292,7 @@ class TestContactsAndFamily:
 
     def test_family_details_with_adhesion_amount(self, db_session):
         a = _make_activity(db_session, "Yoga", resident_price=100, external_price=120)
-        data = AdhesionCreate(email="cotis@example.com", nom="Test", ville="Fauverney",
+        data = AdhesionInput(email="cotis@example.com", nom="Test", ville="Fauverney",
                               adhesion_amount=15, activities=[a.id])
         crud.create_adhesion(db_session, data)
 

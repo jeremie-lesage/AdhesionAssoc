@@ -342,6 +342,73 @@ class TestUpdateAdhesion:
         assert response.status_code == 403
 
 
+class TestAdminOnlyFieldsAreNotClientWritable:
+    """Les champs à effet financier ne se posent que par les routes admin.
+
+    `discount_*` a son endpoint `PUT /api/adhesions/{code}/discount` et
+    `payment_method` son `PUT /api/adhesions/{code}/pay`, tous deux derrière
+    `get_current_admin`. Tant qu'ils restaient dans le schéma d'entrée public,
+    ce contrôle d'autorisation se contournait par la route de création ou de
+    modification, qui ne demandent que le code.
+    """
+
+    def test_creation_ignores_a_client_supplied_discount(self, client):
+        response = client.post(
+            "/api/adhesions",
+            json={**ADHESION_PAYLOAD, "discount_amount": 9999.0, "discount_reason": "Offert"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["discount_amount"] == 0
+        assert response.json()["discount_reason"] is None
+
+    def test_creation_ignores_a_client_supplied_payment_method(self, client):
+        response = client.post(
+            "/api/adhesions", json={**ADHESION_PAYLOAD, "payment_method": "especes"}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["payment_method"] is None
+
+    def test_update_cannot_overwrite_a_discount_granted_by_an_admin(self, client, auth_headers):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+        client.put(
+            f"/api/adhesions/{code}/discount",
+            json={"discount_amount": 5.0, "discount_reason": "Bénévole"},
+            headers=auth_headers,
+        )
+
+        response = client.put(
+            f"/api/adhesions/{code}",
+            json={**ADHESION_PAYLOAD, "discount_amount": 9999.0, "discount_reason": "Offert"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["discount_amount"] == 5.0
+        assert response.json()["discount_reason"] == "Bénévole"
+
+    def test_update_cannot_mark_an_adhesion_as_paid(self, client):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        response = client.put(
+            f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "payment_method": "especes"}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["payment_method"] is None
+
+    def test_a_legitimate_payload_still_goes_through(self, client):
+        """Le formulaire renvoie tout son état, dont `code` et `status` : le
+        schéma restreint doit ignorer l'inconnu, pas rejeter la soumission."""
+        response = client.post(
+            "/api/adhesions", json={**ADHESION_PAYLOAD, "code": "PEUIMPORTE00", "status": "paid"}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["code"] != "PEUIMPORTE00"
+        assert response.json()["status"] == "pending"
+
+
 class TestActivities:
     def test_listing_activities_is_public(self, client, db_session):
         _create_activity(db_session, name="Danse")

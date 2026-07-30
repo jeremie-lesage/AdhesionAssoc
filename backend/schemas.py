@@ -117,9 +117,28 @@ class AdhesionBase(BaseModel):
     discount_reason: str | None = None
 
 
-class AdhesionCreate(AdhesionBase):
+class AdhesionInput(BaseModel):
+    """Champs saisis par l'adhérent — entrée de POST et PUT /api/adhesions.
+
+    Volontairement disjoint d'`AdhesionBase` : `discount_amount`, `discount_reason`
+    et `payment_method` n'y figurent pas. Ces champs ne se posent que par les routes
+    admin dédiées (`/discount`, `/pay`), toutes deux derrière `get_current_admin` ;
+    les hériter ici rouvrirait le contournement de ce contrôle par la route publique.
+
+    Les champs inconnus sont ignorés, pas rejetés : le formulaire renvoie tout son
+    état (`code`, `status`, et le reste de l'adhésion rechargée en modification).
+    """
+    email: EmailStr
+    telephone: str | None = None
+    nom: str | None = None
+    prenom: str | None = None
+    date_naissance: str | None = None
+    numero_rue: str | None = None
+    nom_rue: str | None = None
+    code_postal: str | None = None
+    ville: str | None = None
+    adhesion_amount: float | None = None
     activities: list[int] | None = []
-    pass
 
 
 class AdhesionSchema(AdhesionBase):
