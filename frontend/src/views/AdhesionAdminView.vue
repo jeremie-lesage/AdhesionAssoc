@@ -254,7 +254,10 @@ onMounted(fetchAdhesions);
       <Column header="Actions" style="min-width: 12rem;">
         <template #body="{ data }">
           <Button icon="pi pi-eye" severity="secondary" text rounded size="small" title="Voir" @click="router.push({ name: 'admin-adhesion-detail', params: { code: data.code } })" />
-          <Button v-if="data.status !== 'paid'" icon="pi pi-pencil" severity="info" text rounded size="small" title="Corriger" @click="handleEdit(data.code)" />
+          <!-- Réservé à `pending` : au-delà, le serveur refuse la modification.
+               Pour corriger un dossier validé ou payé, passer par « Voir » puis
+               « Repasser en attente ». -->
+          <Button v-if="data.status === 'pending'" icon="pi pi-pencil" severity="info" text rounded size="small" title="Corriger" @click="handleEdit(data.code)" />
           <Button v-if="data.status === 'pending'" icon="pi pi-check" severity="success" text rounded size="small" title="Valider" @click="handleValidate(data.code)" />
           <Button v-if="data.status === 'pending' || data.status === 'validated'" icon="pi pi-euro" severity="warn" text rounded size="small" title="Payer" @click="openPaymentModal(data.code)" />
           <Button v-if="data.status === 'paid'" icon="pi pi-file" severity="secondary" text rounded size="small" title="Reçu" @click="handleReceipt(data.code)" />

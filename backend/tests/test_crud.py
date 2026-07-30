@@ -126,6 +126,72 @@ class TestUpdateAdhesion:
         with pytest.raises(ValueError, match="Cannot update a validated adhesion"):
             crud.update_adhesion(db_session, created.code, update)
 
+    def test_update_paid_adhesion_raises(self, db_session):
+        """Le frontend bloque déjà `paid` (LoadForm.vue) : le serveur doit aussi."""
+        created = _make_adhesion(db_session)
+        db_adhesion = db_session.query(Adhesion).filter(Adhesion.id == created.id).one()
+        db_adhesion.status = "paid"
+        db_session.commit()
+
+        update = AdhesionInput(email="test@example.com", nom="Nouveau")
+        with pytest.raises(ValueError, match="Cannot update a paid adhesion"):
+            crud.update_adhesion(db_session, created.code, update)
+
+    def test_update_rejects_a_full_activity(self, db_session):
+        a = _make_activity(db_session, "Yoga", max_participants=1)
+        _make_adhesion(db_session, email="first@example.com", activities=[a.id])
+        created = _make_adhesion(db_session, email="second@example.com")
+
+        update = AdhesionInput(email="second@example.com", activities=[a.id])
+        with pytest.raises(ValueError, match="maximum number of participants"):
+            crud.update_adhesion(db_session, created.code, update)
+
+    def test_update_keeps_an_activity_the_adherent_already_joined(self, db_session):
+        """Le quota ne compte que les *autres* inscrits.
+
+        Sans cela, un adhérent seul sur une activité complète ne pourrait plus
+        corriger son dossier : sa propre inscription saturerait le quota.
+        """
+        a = _make_activity(db_session, "Yoga", max_participants=1)
+        created = _make_adhesion(db_session, activities=[a.id])
+
+        update = AdhesionInput(email="test@example.com", nom="Modifié", activities=[a.id])
+        result = crud.update_adhesion(db_session, created.code, update)
+
+        assert result.nom == "Modifié"
+        assert [act.name for act in result.activities] == ["Yoga"]
+
+
+class TestInvalidateAdhesion:
+    """`invalidate` est le seul retour en arrière du cycle de vie.
+
+    Puisque la modification est désormais réservée au statut `pending`, c'est par
+    là que passe un admin qui veut corriger un dossier déjà validé ou encaissé.
+    """
+
+    def test_invalidate_a_validated_adhesion(self, db_session):
+        created = _make_adhesion(db_session)
+        db_session.query(Adhesion).filter(Adhesion.id == created.id).one().status = "validated"
+        db_session.commit()
+
+        result = crud.invalidate_adhesion(db_session, created.code)
+
+        assert result.status == "pending"
+
+    def test_invalidate_a_paid_adhesion_clears_the_payment(self, db_session):
+        """Sans effacer `payment_method`, l'adhésion resterait « en attente,
+        payée par chèque » — un état que le back-office afficherait tel quel."""
+        created = _make_adhesion(db_session)
+        crud.update_adhesion_payment(db_session, created.code, "cheque")
+
+        result = crud.invalidate_adhesion(db_session, created.code)
+
+        assert result.status == "pending"
+        assert result.payment_method is None
+
+    def test_invalidate_unknown_code_returns_none(self, db_session):
+        assert crud.invalidate_adhesion(db_session, "INEXISTANT") is None
+
 
 class TestUpdatePayment:
     def test_mark_as_paid(self, db_session):

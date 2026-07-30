@@ -23,6 +23,16 @@ ADHESION_PAYLOAD = {
 }
 
 
+def _pay(client, auth_headers, payload=None):
+    """Crée une adhésion et la mène jusqu'au statut `paid`. Renvoie son code."""
+    code = client.post("/api/adhesions", json=payload or ADHESION_PAYLOAD).json()["code"]
+    client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+    client.put(
+        f"/api/adhesions/{code}/pay", json={"payment_method": "cheque"}, headers=auth_headers
+    )
+    return code
+
+
 def _create_activity(db_session, name="Yoga", resident_price=100.0, external_price=120.0,
                      max_participants=0):
     activity = Activity(
@@ -340,6 +350,42 @@ class TestUpdateAdhesion:
         response = client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "nom": "Martin"})
 
         assert response.status_code == 403
+
+    def test_a_paid_adhesion_can_no_longer_be_edited(self, client, auth_headers):
+        code = _pay(client, auth_headers)
+
+        response = client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "nom": "Martin"})
+
+        assert response.status_code == 403
+
+    def test_a_paid_adhesion_cannot_gain_activities(self, client, auth_headers, db_session):
+        """`GET /api/adhesions/{code}/receipt` régénère le justificatif depuis
+        l'état courant : une activité ajoutée après paiement y serait acquittée."""
+        activity = _create_activity(db_session, name="Danse")
+        code = _pay(client, auth_headers)
+
+        client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "activities": [activity.id]})
+
+        assert client.get(f"/api/adhesions/{code}").json()["activities"] == []
+
+    def test_an_admin_reopens_a_paid_adhesion_to_correct_it(self, client, auth_headers):
+        """Chemin de correction admin : repasser en attente, puis modifier."""
+        code = _pay(client, auth_headers)
+
+        reopened = client.put(f"/api/adhesions/{code}/invalidate", headers=auth_headers)
+
+        assert reopened.status_code == 200, reopened.text
+        assert reopened.json()["status"] == "pending"
+        assert reopened.json()["payment_method"] is None
+
+        edited = client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "nom": "Martin"})
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["nom"] == "Martin"
+
+    def test_reopening_requires_a_token(self, client, auth_headers):
+        code = _pay(client, auth_headers)
+
+        assert client.put(f"/api/adhesions/{code}/invalidate").status_code == 401
 
 
 class TestAdminOnlyFieldsAreNotClientWritable:

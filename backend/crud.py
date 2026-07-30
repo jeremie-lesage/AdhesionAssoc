@@ -39,6 +39,24 @@ def get_adhesions(db: Session) -> list[AdhesionSchema]:
     return [AdhesionSchema.model_validate(adhesion) for adhesion in adhesions]
 
 
+def _check_activity_is_open(activity: Activity, exclude_adhesion_id: int | None = None) -> None:
+    """Refuse une activité dont la date limite est passée ou le quota atteint.
+
+    Partagé par la création et la modification : les deux chemins mènent à une
+    inscription, ils doivent opposer les mêmes refus.
+
+    `exclude_adhesion_id` retire du décompte l'adhésion en cours de modification.
+    Sans cela, un adhérent seul sur une activité complète ne pourrait plus
+    corriger son dossier : sa propre inscription saturerait le quota.
+    """
+    if activity.registration_deadline and date.today() > activity.registration_deadline:
+        raise ValueError(f"La date limite d'inscription pour l'activité '{activity.name}' est dépassée.")
+    if activity.max_participants and activity.max_participants > 0:
+        others = sum(1 for a in activity.adhesions if a.id != exclude_adhesion_id)
+        if others >= activity.max_participants:
+            raise ValueError(f"Activity '{activity.name}' has reached its maximum number of participants.")
+
+
 def create_adhesion(db: Session, adhesion: AdhesionInput) -> AdhesionSchema:
     adhesion_data = adhesion.model_dump(exclude={'activities'})
     db_adhesion = Adhesion(**adhesion_data, code=generate_random_code())
@@ -46,10 +64,7 @@ def create_adhesion(db: Session, adhesion: AdhesionInput) -> AdhesionSchema:
     if adhesion.activities:
         activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
         for activity in activities:
-            if activity.registration_deadline and date.today() > activity.registration_deadline:
-                raise ValueError(f"La date limite d'inscription pour l'activité '{activity.name}' est dépassée.")
-            if activity.max_participants > 0 and len(activity.adhesions) >= activity.max_participants:
-                raise ValueError(f"Activity '{activity.name}' has reached its maximum number of participants.")
+            _check_activity_is_open(activity)
             db_adhesion.activities.append(activity)
 
     db.add(db_adhesion)
@@ -163,10 +178,19 @@ async def resend_validation_email(db: Session, code: str) -> AdhesionSchema | No
 
 
 def invalidate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
-    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'validated').first()
+    """Repasse une adhésion en attente, quel que soit son statut de départ.
+
+    C'est le seul retour en arrière du cycle de vie, et depuis que la
+    modification est réservée au statut `pending`, le passage obligé pour
+    corriger un dossier déjà validé ou encaissé. `payment_method` est effacé :
+    une adhésion « en attente » qui garderait un mode de paiement serait
+    affichée comme telle par le back-office.
+    """
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
     if adhesion is None:
         return None
     adhesion.status = 'pending'
+    adhesion.payment_method = None
     db.commit()
     db.refresh(adhesion)
     return AdhesionSchema.model_validate(adhesion)
@@ -200,8 +224,14 @@ def update_adhesion(db: Session, code: str, adhesion: AdhesionInput) -> Adhesion
     if db_adhesion is None:
         return None
 
-    if db_adhesion.status == 'validated':
-        raise ValueError("Cannot update a validated adhesion")
+    # Seul le statut `pending` est modifiable. Une adhésion `validated` a fait
+    # l'objet d'un email de confirmation, une `paid` d'un encaissement et d'un
+    # reçu — que `GET /api/adhesions/{code}/receipt` régénère depuis l'état
+    # courant, donc toute modification postérieure y apparaîtrait acquittée.
+    # Pour corriger un tel dossier, un admin le repasse d'abord en attente
+    # (`PUT /api/adhesions/{code}/invalidate`).
+    if db_adhesion.status != 'pending':
+        raise ValueError(f"Cannot update a {db_adhesion.status} adhesion")
 
     update_data = adhesion.model_dump(exclude_unset=True)
     activities_update = update_data.pop('activities', None)
@@ -214,8 +244,7 @@ def update_adhesion(db: Session, code: str, adhesion: AdhesionInput) -> Adhesion
         if adhesion.activities:
             activities = db.query(Activity).filter(Activity.id.in_(adhesion.activities)).all()
             for activity in activities:
-                if activity.registration_deadline and date.today() > activity.registration_deadline:
-                    raise ValueError(f"La date limite d'inscription pour l'activité '{activity.name}' est dépassée.")
+                _check_activity_is_open(activity, exclude_adhesion_id=db_adhesion.id)
                 db_adhesion.activities.append(activity)
 
     db.commit()

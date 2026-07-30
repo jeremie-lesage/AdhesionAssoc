@@ -104,9 +104,12 @@
 
       <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
         <Button label="Retour" icon="pi pi-arrow-left" severity="secondary" @click="router.push({ name: 'admin-adhesions' })" />
-        <Button v-if="adhesion.status !== 'paid'" label="Modifier" icon="pi pi-pencil" severity="info" @click="router.push({ name: 'adhesion', query: { code: adhesion.code, source: 'admin' } })" />
+        <!-- Seul `pending` est modifiable côté serveur (crud.update_adhesion) :
+             pour corriger un dossier validé ou payé, il faut d'abord le repasser
+             en attente. Proposer « Modifier » plus tôt menait à un 403. -->
+        <Button v-if="adhesion.status === 'pending'" label="Modifier" icon="pi pi-pencil" severity="info" @click="router.push({ name: 'adhesion', query: { code: adhesion.code, source: 'admin' } })" />
         <Button v-if="adhesion.status === 'pending'" label="Valider" icon="pi pi-check" severity="success" @click="handleValidate" />
-        <Button v-if="adhesion.status === 'validated'" label="Repasser en attente" icon="pi pi-replay" severity="warn" @click="handleInvalidate" />
+        <Button v-if="adhesion.status !== 'pending'" label="Repasser en attente" icon="pi pi-replay" severity="warn" @click="handleInvalidate" />
         <Button v-if="adhesion.status === 'pending' || adhesion.status === 'validated'" label="Marquer payé" icon="pi pi-euro" severity="warn" @click="showPaymentChoice = true" />
       </div>
 
@@ -177,6 +180,12 @@ const handleResend = async () => {
 
 const handleInvalidate = async () => {
   if (!adhesion.value) return;
+  // Depuis `paid`, l'opération annule aussi le paiement enregistré : elle mérite
+  // une confirmation, contrairement au simple retour depuis `validated`.
+  if (adhesion.value.status === 'paid'
+      && !confirm(`Le paiement par ${adhesion.value.payment_method} sera annulé. Continuer ?`)) {
+    return;
+  }
   try {
     adhesion.value = await invalidateAdhesion(adhesion.value.code);
     success.value = 'La demande a été repassée en attente.';

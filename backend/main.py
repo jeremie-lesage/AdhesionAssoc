@@ -152,7 +152,7 @@ async def resend_validation_email(code: str, db: Session = Depends(get_db)):
 def invalidate_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = crud.invalidate_adhesion(db, code)
     if adhesion is None:
-        raise HTTPException(status_code=404, detail="Adhesion not found or not validated")
+        raise HTTPException(status_code=404, detail="Adhesion not found")
     return adhesion
 
 
