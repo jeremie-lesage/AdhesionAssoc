@@ -1,6 +1,8 @@
+import logging
 import os
 import secrets
 import string
+import sys
 from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -14,6 +16,7 @@ import crud
 from auth import create_access_token, get_current_admin, get_password_hash, verify_password
 from config import settings
 from database import create_tables, get_db
+from email_service import EmailSendError
 from rate_limiter import rate_limit
 from schemas import (
     ActivityCreate,
@@ -28,6 +31,16 @@ from schemas import (
     DashboardStats,
     FamilyDetails,
     PublicSettings,
+)
+
+# Le logger racine n'a aucun handler par défaut : les `logger.info` sont alors
+# jetés et les `logger.error` retombent sur le `lastResort` de Python, qui écrit
+# sur stderr. On pose donc explicitement un handler sur stdout.
+# `uvicorn.LOGGING_CONFIG` ne redéfinit pas le logger racine et n'écrase pas ceci.
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stdout,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
 )
 
 app = FastAPI()
@@ -119,6 +132,19 @@ async def validate_adhesion(code: str, db: Session = Depends(get_db)):
     adhesion = await crud.validate_adhesion(db, code)
     if adhesion is None:
         raise HTTPException(status_code=404, detail="AdhesionSchema not found or already validated")
+    return adhesion
+
+
+@app.post("/api/adhesions/{code}/resend-email", response_model=AdhesionSchema,
+          dependencies=[Depends(get_current_admin)])
+async def resend_validation_email(code: str, db: Session = Depends(get_db)):
+    try:
+        adhesion = await crud.resend_validation_email(db, code)
+    except EmailSendError as e:
+        # 502 : l'échec vient du fournisseur d'email, pas de la requête de l'admin.
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    if adhesion is None:
+        raise HTTPException(status_code=404, detail="Adhésion introuvable")
     return adhesion
 
 

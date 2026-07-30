@@ -1,12 +1,13 @@
+import logging
 import random
 import string
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session, selectinload
 
 from config import settings
-from email_service import send_validation_email
+from email_service import EmailSendError, send_validation_email
 from models import Activity, Adhesion
 from models import AdminUser as Admin
 from schemas import (
@@ -23,6 +24,8 @@ from schemas import (
     DashboardStats,
     FamilyDetails,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def generate_random_code(length=12):
@@ -63,12 +66,7 @@ def get_adhesion_by_code(db: Session, code: str) -> AdhesionSchema | None:
     return AdhesionSchema.model_validate(adhesion)
 
 
-async def validate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
-    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
-    if adhesion is None:
-        return None
-    adhesion.status = 'validated'
-    
+def _validation_email_body(adhesion: Adhesion) -> dict:
     total_cost = adhesion.adhesion_amount or 0
     activities_details = []
     for activity in adhesion.activities:
@@ -77,10 +75,7 @@ async def validate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
         total_cost += price or 0
         activities_details.append({"name": activity.name, "price": price})
 
-    db.commit()
-    db.refresh(adhesion)
-
-    email_body = {
+    return {
         "prenom": adhesion.prenom,
         "nom": adhesion.nom,
         "code": adhesion.code,
@@ -88,12 +83,58 @@ async def validate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
         "activities": activities_details,
         "total_cost": total_cost,
     }
+
+
+async def _send_and_stamp(db: Session, adhesion: Adhesion) -> None:
+    """Envoie l'email de confirmation et horodate l'envoi.
+
+    Propage `EmailSendError` : c'est à l'appelant de décider si l'échec est
+    bloquant. Le champ `email_sent_at` n'est renseigné qu'en cas de succès.
+    """
     await send_validation_email(
         email_to=adhesion.email,
         subject="Confirmation de votre adhésion au Foyer Rural",
-        body=email_body
+        body=_validation_email_body(adhesion),
     )
+    adhesion.email_sent_at = datetime.now()
+    db.commit()
+    db.refresh(adhesion)
 
+
+async def validate_adhesion(db: Session, code: str) -> AdhesionSchema | None:
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code, Adhesion.status == 'pending').first()
+    if adhesion is None:
+        return None
+    adhesion.status = 'validated'
+    db.commit()
+    db.refresh(adhesion)
+
+    # Une panne du fournisseur d'email ne doit pas empêcher de valider une adhésion
+    # en pleine période d'inscriptions. L'adhésion reste `validated` avec
+    # `email_sent_at` à NULL : le back-office le signale et propose un renvoi.
+    try:
+        await _send_and_stamp(db, adhesion)
+    except EmailSendError:
+        logger.warning(
+            "Adhésion %s validée sans email de confirmation (envoi à %s en échec)",
+            adhesion.code,
+            adhesion.email,
+        )
+
+    return AdhesionSchema.model_validate(adhesion)
+
+
+async def resend_validation_email(db: Session, code: str) -> AdhesionSchema | None:
+    """Renvoie l'email de confirmation d'une adhésion déjà validée.
+
+    Laisse remonter `EmailSendError` : le renvoi est une action explicite de
+    l'admin, il doit voir l'échec plutôt que de croire l'email reparti.
+    """
+    adhesion = db.query(Adhesion).options(selectinload(Adhesion.activities)).filter(Adhesion.code == code).first()
+    if adhesion is None:
+        return None
+
+    await _send_and_stamp(db, adhesion)
     return AdhesionSchema.model_validate(adhesion)
 
 

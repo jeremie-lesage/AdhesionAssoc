@@ -33,9 +33,11 @@ export interface Adhesion {
   discount_amount: number;
   discount_reason: string | null;
   status: string;
+  /** null sur une adhésion validée : l'email de confirmation n'est pas parti. */
+  email_sent_at: string | null;
 }
 
-export type AdhesionCreate = Omit<Adhesion, 'id' | 'code' | 'status'>;
+export type AdhesionCreate = Omit<Adhesion, 'id' | 'code' | 'status' | 'email_sent_at'>;
 
 export interface AdminUser {
   id: number;

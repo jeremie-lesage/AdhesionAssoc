@@ -207,6 +207,89 @@ class TestValidateAdhesion:
 
         assert sent_emails == []
 
+    def test_a_successful_send_is_recorded(self, client, auth_headers):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        response = client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+
+        assert response.json()["email_sent_at"] is not None
+
+    def test_validation_succeeds_even_if_the_email_fails(
+        self, client, auth_headers, failing_email
+    ):
+        """Décision produit : une panne Brevo ne doit pas bloquer la validation."""
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        response = client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "validated"
+
+    def test_a_failed_send_leaves_the_adhesion_flagged(
+        self, client, auth_headers, failing_email
+    ):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        response = client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+
+        assert response.json()["email_sent_at"] is None
+
+    def test_the_flag_survives_a_reload(self, client, auth_headers, failing_email):
+        """L'alerte du back-office doit persister : elle est lue depuis la base."""
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+        client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+
+        assert client.get(f"/api/adhesions/{code}").json()["email_sent_at"] is None
+
+
+class TestResendValidationEmail:
+    def _validated_code_without_email(self, client, auth_headers):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+        client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+        return code
+
+    def test_resending_sends_the_email_again(
+        self, client, auth_headers, failing_email, sent_emails
+    ):
+        code = self._validated_code_without_email(client, auth_headers)
+        failing_email.restore()
+
+        response = client.post(f"/api/adhesions/{code}/resend-email", headers=auth_headers)
+
+        assert response.status_code == 200, response.text
+        assert len(sent_emails) == 1
+        assert sent_emails[0]["body"]["code"] == code
+
+    def test_resending_records_the_send(
+        self, client, auth_headers, failing_email
+    ):
+        code = self._validated_code_without_email(client, auth_headers)
+        failing_email.restore()
+
+        response = client.post(f"/api/adhesions/{code}/resend-email", headers=auth_headers)
+
+        assert response.json()["email_sent_at"] is not None
+
+    def test_a_failed_resend_reports_an_error(self, client, auth_headers, failing_email):
+        """Renvoi = action explicite de l'admin : l'échec doit être une erreur HTTP."""
+        code = self._validated_code_without_email(client, auth_headers)
+
+        response = client.post(f"/api/adhesions/{code}/resend-email", headers=auth_headers)
+
+        assert response.status_code == 502
+
+    def test_resending_an_unknown_code_returns_404(self, client, auth_headers):
+        response = client.post("/api/adhesions/INCONNU12345/resend-email", headers=auth_headers)
+
+        assert response.status_code == 404
+        # Sans cette assertion le test passerait aussi quand la route n'existe pas.
+        assert response.json()["detail"] == "Adhésion introuvable"
+
+    def test_resending_requires_a_token(self, client, auth_headers):
+        code = self._validated_code_without_email(client, auth_headers)
+
+        assert client.post(f"/api/adhesions/{code}/resend-email").status_code == 401
+
 
 class TestUpdateAdhesion:
     def test_a_validated_adhesion_can_no_longer_be_edited(self, client, auth_headers):

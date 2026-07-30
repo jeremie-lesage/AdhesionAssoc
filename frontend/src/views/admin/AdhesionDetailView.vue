@@ -7,6 +7,18 @@
         <Tag :value="getStatusLabel(adhesion.status)" :severity="getStatusSeverity(adhesion.status)" style="font-size: 1rem;" />
       </div>
 
+      <!-- Non `closable` : l'alerte doit rester jusqu'à ce que l'email soit parti. -->
+      <Message v-if="emailNotConfirmed" severity="warn" :closable="false" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <span>
+            Envoi de l'email de confirmation non confirmé pour
+            <strong>{{ adhesion.email }}</strong>. L'adhérent n'a probablement pas reçu son code.
+          </span>
+          <Button label="Renvoyer l'email" icon="pi pi-envelope" severity="warn" size="small"
+                  :loading="resending" @click="handleResend" />
+        </div>
+      </Message>
+
       <div class="detail-grid">
         <Card>
           <template #title>Coordonnées</template>
@@ -112,7 +124,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment, updateAdhesionDiscount } from '@/api';
+import { getAdhesionByCode, invalidateAdhesion, validateAdhesion, updateAdhesionPayment, updateAdhesionDiscount, resendValidationEmail } from '@/api';
 import type { Adhesion, Activity } from '@/types';
 import { activityPrice, adhesionTotal } from '@/pricing';
 import Card from 'primevue/card';
@@ -128,13 +140,38 @@ const adhesion = ref<Adhesion | null>(null);
 const success = ref<string | null>(null);
 const error = ref<string | null>(null);
 
+/** Une adhésion validée dont l'email n'est pas parti. `pending` n'en envoie aucun. */
+const emailNotConfirmed = computed(
+  () => !!adhesion.value && adhesion.value.status !== 'pending' && !adhesion.value.email_sent_at,
+);
+
+const resending = ref(false);
+
 const handleValidate = async () => {
   if (!adhesion.value) return;
   try {
     adhesion.value = await validateAdhesion(adhesion.value.code);
-    success.value = 'La demande a été validée.';
+    // La validation aboutit même si Brevo est en panne : dans ce cas on ne
+    // prétend pas que tout va bien, c'est la bannière d'alerte qui prend le relais.
+    success.value = adhesion.value.email_sent_at
+      ? 'La demande a été validée et l\'email de confirmation envoyé.'
+      : null;
   } catch {
     error.value = 'Erreur lors de la validation.';
+  }
+};
+
+const handleResend = async () => {
+  if (!adhesion.value) return;
+  resending.value = true;
+  error.value = null;
+  try {
+    adhesion.value = await resendValidationEmail(adhesion.value.code);
+    success.value = `L'email de confirmation a été renvoyé à ${adhesion.value.email}.`;
+  } catch {
+    error.value = "L'email n'est toujours pas parti. Vérifiez la clé Brevo, puis les logs du backend.";
+  } finally {
+    resending.value = false;
   }
 };
 

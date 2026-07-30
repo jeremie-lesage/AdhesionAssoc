@@ -85,6 +85,31 @@ def sent_emails(monkeypatch):
 
 
 @pytest.fixture
+def failing_email(monkeypatch, sent_emails):
+    """Simule une panne du fournisseur d'email (clé révoquée, API injoignable).
+
+    Dépend de `sent_emails` pour garantir l'ordre des patches : la fixture autouse
+    installe son faux envoi, celle-ci le remplace par un envoi qui échoue.
+    `restore()` rétablit l'envoi qui réussit, pour tester un renvoi après panne.
+    """
+    import crud
+    from email_service import EmailSendError
+
+    working_send = crud.send_validation_email
+
+    async def _fail(**kwargs):
+        raise EmailSendError("Brevo indisponible (simulé)")
+
+    monkeypatch.setattr(crud, "send_validation_email", _fail)
+
+    class _Outage:
+        def restore(self):
+            monkeypatch.setattr(crud, "send_validation_email", working_send)
+
+    return _Outage()
+
+
+@pytest.fixture
 def client(db_session):
     """TestClient avec `get_db` redirigé vers la session de test.
 

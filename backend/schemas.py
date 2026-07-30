@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, EmailStr
 
@@ -126,6 +126,8 @@ class AdhesionSchema(AdhesionBase):
     id: int
     code: str
     status: str
+    # NULL sur une adhésion validée : l'email de confirmation n'a pas pu être envoyé.
+    email_sent_at: datetime | None = None
     activities: list[ActivitySchema] = []
 
     class Config:

@@ -1,4 +1,15 @@
-from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String, Table, Time
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Time,
+)
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -30,6 +41,9 @@ class Adhesion(Base):
     adhesion_amount = Column(Float, nullable=True)
     discount_amount = Column(Float, nullable=True, default=0)
     discount_reason = Column(String, nullable=True)
+    # NULL sur une adhésion `validated` = l'email de confirmation n'est pas parti.
+    # C'est ce que le back-office signale à l'admin pour qu'il puisse le renvoyer.
+    email_sent_at = Column(DateTime, nullable=True)
 
     activities = relationship("Activity", secondary=adhesion_activity_association, back_populates="adhesions")
 

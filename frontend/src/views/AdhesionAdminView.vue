@@ -132,6 +132,10 @@ const updateAdhesionInList = (code: string, updatedAdhesion: Adhesion) => {
   }
 };
 
+/** Adhésion non `pending` dont l'email de confirmation n'est pas parti. */
+const emailNotConfirmed = (adhesion: Adhesion) =>
+    adhesion.status !== 'pending' && !adhesion.email_sent_at;
+
 const handleEdit = (code: string) => {
   router.push({name: 'adhesion', query: {code, source: 'admin'}});
 };
@@ -140,7 +144,13 @@ const handleValidate = async (code: string) => {
   try {
     const updated = await validateAdhesion(code);
     updateAdhesionInList(code, updated);
-    success.value = `L'adhésion ${code} a été validée.`;
+    // La validation aboutit même si l'email n'est pas parti : ne pas annoncer un
+    // succès complet dans ce cas, sinon la panne d'envoi repasse inaperçue.
+    if (updated.email_sent_at) {
+      success.value = `L'adhésion ${code} a été validée et l'email de confirmation envoyé.`;
+    } else {
+      error.value = `L'adhésion ${code} est validée, mais l'email de confirmation n'est pas parti. Ouvrez la fiche pour le renvoyer.`;
+    }
   } catch {
     error.value = `Erreur lors de la validation de l'adhésion ${code}.`;
   }
@@ -234,6 +244,11 @@ onMounted(fetchAdhesions);
       <Column field="status" header="Statut" sortable>
         <template #body="{ data }">
           <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
+          <!-- Repère persistant : permet de retrouver les adhésions à relancer
+               sans ouvrir chaque fiche. Le renvoi se fait depuis le détail. -->
+          <i v-if="emailNotConfirmed(data)" class="pi pi-envelope"
+             style="margin-left: 0.4rem; color: #c17d00;"
+             title="Envoi de l'email de confirmation non confirmé" />
         </template>
       </Column>
       <Column header="Actions" style="min-width: 12rem;">

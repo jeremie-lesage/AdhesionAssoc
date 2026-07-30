@@ -1,9 +1,23 @@
+import logging
 from pathlib import Path
 
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
 from config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class EmailSendError(Exception):
+    """L'email n'a pas pu être remis au fournisseur.
+
+    Existe pour que l'appelant puisse distinguer un échec d'envoi de n'importe
+    quelle autre erreur, et décider quoi faire — historiquement l'exception était
+    avalée par un `print`, ce qui a masqué une clé Brevo désactivée pendant des
+    semaines : les adhésions passaient en `validated` sans qu'aucun email ne parte.
+    """
+
 
 # Configure API key authorization: api-key
 configuration = sib_api_v3_sdk.Configuration()
@@ -44,6 +58,17 @@ async def send_validation_email(email_to: str, subject: str, body: dict):
 
     try:
         api_response = api_instance.send_transac_email(send_smtp_email)
-        print(api_response)
     except ApiException as e:
-        print(f"Exception when calling TransactionalEmailsApi->send_transac_email: {e}\n")
+        # `e.body` porte le diagnostic utile de Brevo ("API Key is not enabled",
+        # "sender not valid"…) ; sans lui le message est indéchiffrable.
+        logger.error(
+            "Échec de l'envoi Brevo vers %s : HTTP %s %s", email_to, e.status, e.body
+        )
+        raise EmailSendError(f"Brevo a refusé l'envoi (HTTP {e.status})") from e
+    except Exception as e:
+        # Panne réseau/DNS : urllib3 lève ses propres exceptions, hors ApiException.
+        logger.exception("Envoi Brevo impossible vers %s", email_to)
+        raise EmailSendError("Fournisseur d'email injoignable") from e
+
+    logger.info("Email de validation envoyé à %s (%s)", email_to, api_response.message_id)
+    return api_response
