@@ -128,6 +128,8 @@ class AdhesionSchema(AdhesionBase):
     status: str
     # NULL sur une adhésion validée : l'email de confirmation n'a pas pu être envoyé.
     email_sent_at: datetime | None = None
+    # NULL : l'accusé de réception de la soumission n'a pas pu être envoyé.
+    submission_email_sent_at: datetime | None = None
     activities: list[ActivitySchema] = []
 
     class Config:

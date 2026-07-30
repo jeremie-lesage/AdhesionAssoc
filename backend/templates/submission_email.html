@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Nous avons reçu votre demande d'adhésion</title>
+    <style>
+        body { font-family: sans-serif; }
+        .code { font-family: monospace; font-size: 1.3em; font-weight: bold; letter-spacing: 1px; }
+        .encadre { border: 1px solid #ddd; background-color: #f7f7f7; padding: 12px; margin: 16px 0; }
+    </style>
+</head>
+<body>
+    <h1>Bonjour {{ prenom }} {{ nom }},</h1>
+    <p>Nous avons bien reçu votre demande d'adhésion au Foyer Rural de Fauverney.</p>
+
+    <div class="encadre">
+        <p style="margin-top: 0;">Votre code de suivi :</p>
+        <p class="code" style="margin-bottom: 0;">{{ code }}</p>
+    </div>
+
+    <p>
+        Conservez ce code : il vous permet de <strong>reprendre ou corriger votre
+        demande</strong> tant qu'elle n'a pas été validée.
+    </p>
+    <p><a href="{{ resume_url }}">Reprendre ma demande</a></p>
+
+    <p>
+        Votre demande va maintenant être examinée par le bureau. Vous recevrez un
+        second email de confirmation, avec le récapitulatif et le montant à régler,
+        dès qu'elle aura été validée.
+    </p>
+
+    <p>Merci de votre confiance.</p>
+    <p>L'équipe du Foyer Rural de Fauverney</p>
+</body>
+</html>

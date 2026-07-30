@@ -7,7 +7,7 @@ from datetime import date, datetime
 from sqlalchemy.orm import Session, selectinload
 
 from config import settings
-from email_service import EmailSendError, send_validation_email
+from email_service import EmailSendError, send_submission_email, send_validation_email
 from models import Activity, Adhesion
 from models import AdminUser as Admin
 from schemas import (
@@ -55,6 +55,30 @@ def create_adhesion(db: Session, adhesion: AdhesionCreate) -> AdhesionSchema:
     db.add(db_adhesion)
     db.commit()
     db.refresh(db_adhesion)
+
+    # L'adhésion est enregistrée avant l'envoi : un formulaire de quatre étapes ne
+    # doit jamais être perdu parce que le fournisseur d'email est en panne.
+    # `submission_email_sent_at` reste alors à NULL et l'échec est journalisé.
+    try:
+        send_submission_email(
+            email_to=db_adhesion.email,
+            subject="Nous avons reçu votre demande d'adhésion",
+            body={
+                "prenom": db_adhesion.prenom,
+                "nom": db_adhesion.nom,
+                "code": db_adhesion.code,
+                "resume_url": f"{settings.PUBLIC_URL}/adhesion?code={db_adhesion.code}",
+            },
+        )
+        db_adhesion.submission_email_sent_at = datetime.now()
+        db.commit()
+        db.refresh(db_adhesion)
+    except EmailSendError:
+        logger.warning(
+            "Adhésion %s enregistrée sans accusé de réception (envoi à %s en échec)",
+            db_adhesion.code,
+            db_adhesion.email,
+        )
 
     return AdhesionSchema.model_validate(db_adhesion)
 

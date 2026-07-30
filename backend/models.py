@@ -44,6 +44,10 @@ class Adhesion(Base):
     # NULL sur une adhésion `validated` = l'email de confirmation n'est pas parti.
     # C'est ce que le back-office signale à l'admin pour qu'il puisse le renvoyer.
     email_sent_at = Column(DateTime, nullable=True)
+    # Accusé de réception envoyé à la soumission. Colonne distincte de
+    # `email_sent_at` : sans quoi l'accusé masquerait l'échec de l'email de
+    # validation, qui ne serait alors plus signalé au back-office.
+    submission_email_sent_at = Column(DateTime, nullable=True)
 
     activities = relationship("Activity", secondary=adhesion_activity_association, back_populates="adhesions")
 

@@ -84,6 +84,36 @@ def sent_emails(monkeypatch):
     return calls
 
 
+@pytest.fixture(autouse=True)
+def submission_emails(monkeypatch):
+    """Intercepte les accusés de réception envoyés à la soumission du formulaire.
+
+    Liste distincte de `sent_emails` : sans quoi la création d'une adhésion
+    gonflerait les compteurs des tests portant sur l'email de validation.
+    """
+    import crud
+
+    calls = []
+
+    def _fake_send(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(crud, "send_submission_email", _fake_send)
+    return calls
+
+
+@pytest.fixture
+def failing_submission_email(monkeypatch, submission_emails):
+    """L'accusé de réception échoue, la soumission doit malgré tout aboutir."""
+    import crud
+    from email_service import EmailSendError
+
+    def _fail(**kwargs):
+        raise EmailSendError("Brevo indisponible (simulé)")
+
+    monkeypatch.setattr(crud, "send_submission_email", _fail)
+
+
 @pytest.fixture
 def failing_email(monkeypatch, sent_emails):
     """Simule une panne du fournisseur d'email (clé révoquée, API injoignable).

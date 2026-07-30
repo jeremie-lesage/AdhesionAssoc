@@ -242,6 +242,47 @@ class TestValidateAdhesion:
         assert client.get(f"/api/adhesions/{code}").json()["email_sent_at"] is None
 
 
+class TestSubmissionEmail:
+    """Accusé de réception envoyé dès la soumission du formulaire.
+
+    L'adhérent doit repartir avec son code : c'est lui qui lui permet de
+    reprendre ou corriger sa demande avant validation.
+    """
+
+    def test_submission_sends_an_acknowledgement(self, client, submission_emails):
+        response = client.post("/api/adhesions", json=ADHESION_PAYLOAD)
+
+        assert len(submission_emails) == 1
+        assert submission_emails[0]["email_to"] == ADHESION_PAYLOAD["email"]
+        assert submission_emails[0]["body"]["code"] == response.json()["code"]
+
+    def test_the_acknowledgement_is_recorded(self, client):
+        response = client.post("/api/adhesions", json=ADHESION_PAYLOAD)
+
+        assert response.json()["submission_email_sent_at"] is not None
+
+    def test_submission_succeeds_even_if_the_email_fails(
+        self, client, failing_submission_email
+    ):
+        """Un formulaire long ne doit jamais être perdu parce que Brevo est en panne."""
+        response = client.post("/api/adhesions", json=ADHESION_PAYLOAD)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["code"]
+
+    def test_a_failed_acknowledgement_is_flagged(self, client, failing_submission_email):
+        response = client.post("/api/adhesions", json=ADHESION_PAYLOAD)
+
+        assert response.json()["submission_email_sent_at"] is None
+
+    def test_the_acknowledgement_carries_a_link_to_resume_the_form(
+        self, client, submission_emails
+    ):
+        response = client.post("/api/adhesions", json=ADHESION_PAYLOAD)
+
+        assert response.json()["code"] in submission_emails[0]["body"]["resume_url"]
+
+
 class TestResendValidationEmail:
     def _validated_code_without_email(self, client, auth_headers):
         code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]

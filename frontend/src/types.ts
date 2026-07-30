@@ -35,9 +35,14 @@ export interface Adhesion {
   status: string;
   /** null sur une adhésion validée : l'email de confirmation n'est pas parti. */
   email_sent_at: string | null;
+  /** null : l'accusé de réception de la soumission n'est pas parti. */
+  submission_email_sent_at: string | null;
 }
 
-export type AdhesionCreate = Omit<Adhesion, 'id' | 'code' | 'status' | 'email_sent_at'>;
+export type AdhesionCreate = Omit<
+  Adhesion,
+  'id' | 'code' | 'status' | 'email_sent_at' | 'submission_email_sent_at'
+>;
 
 export interface AdminUser {
   id: number;
