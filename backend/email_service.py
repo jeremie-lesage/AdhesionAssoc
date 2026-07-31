@@ -1,17 +1,21 @@
 import logging
-import re
 from pathlib import Path
 
 import sib_api_v3_sdk
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from jinja2.exceptions import UndefinedError
 from sib_api_v3_sdk.rest import ApiException
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Bloc de boucle des templates, corps compris (`re.DOTALL` : il est multiligne).
-ACTIVITY_LOOP = re.compile(
-    r"{% for activity in activities %}.*?{% endfor %}", re.DOTALL
+# `autoescape` : c'est tout l'objet du passage à Jinja2 (cf. render_template).
+# `StrictUndefined` : une clé oubliée devient une erreur, non un trou silencieux.
+_TEMPLATE_ENV = Environment(
+    loader=FileSystemLoader(Path(__file__).parent / "templates"),
+    autoescape=True,
+    undefined=StrictUndefined,
 )
 
 
@@ -33,29 +37,26 @@ configuration.api_key['api-key'] = settings.BREVO_API_KEY
 api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
 def render_template(template_name: str, context: dict) -> str:
-    template_path = Path(__file__).parent / 'templates' / template_name
-    with open(template_path) as f:
-        template_str = f.read()
-    
-    for key, value in context.items():
-        if key == "activities":
-            activity_html = ""
-            for activity in value:
-                activity_html += f"<tr><td>Activité : {activity['name']}</td><td>{activity['price']}€</td></tr>"
-            # Le bloc entier est remplacé, corps de boucle inclus. Ne substituer que
-            # les deux balises laissait le `<tr>` modèle dans l'email, avec ses
-            # `{{ activity.name }}` en clair — visible par l'adhérent.
-            # `lambda` plutôt qu'une chaîne : re.sub interpréterait les échappements
-            # (`\g`, `\1`) qu'un nom d'activité pourrait contenir.
-            # `html=` lie la valeur maintenant : la lambda capturerait sinon la
-            # variable de boucle (ruff B023).
-            template_str = ACTIVITY_LOOP.sub(
-                lambda _, html=activity_html: html, template_str
-            )
-        else:
-            template_str = template_str.replace(f"{{{{ {key} }}}}", str(value))
+    """Rend un template d'email, valeurs échappées.
 
-    return template_str
+    Les templates sont écrits en syntaxe Jinja2 (`{{ }}`, `{% for %}`) et étaient
+    rendus par une substitution maison (`str.replace`, `re.sub`) qui n'échappait
+    rien : `nom`, `prenom` et les noms d'activités partaient tels quels dans le
+    corps de l'email. Un nom d'activité est saisi au back-office et diffusé à tous
+    les inscrits — le jour où un compte admin est compromis, c'est un vecteur
+    d'injection HTML de masse. `receipt.html` passait déjà par Jinja2 ; les emails
+    le font désormais aussi.
+
+    Lève `EmailSendError` si le contexte est incomplet (`StrictUndefined`) : mieux
+    vaut un échec d'envoi, que l'appelant sait absorber — l'adhésion reste
+    enregistrée, `email_sent_at` reste NULL et le back-office propose le renvoi —
+    qu'un email tronqué remis à l'adhérent.
+    """
+    try:
+        return _TEMPLATE_ENV.get_template(template_name).render(**context)
+    except UndefinedError as e:
+        logger.error("Template %s incomplet : %s", template_name, e)
+        raise EmailSendError(f"Template {template_name} incomplet : {e}") from e
 
 def _send(email_to: str, subject: str, html_content: str):
     """Remet un email à Brevo, ou lève `EmailSendError`.

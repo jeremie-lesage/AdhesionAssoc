@@ -14,6 +14,10 @@ dependencies = [
     "sqlalchemy",
     "sib-api-v3-sdk",
     "alembic>=1.18.4",
+    # Importé directement par email_service.py (rendu des emails avec échappement).
+    # Déjà tiré par fastapi[all] pour les templates, mais déclaré ici pour ne pas
+    # dépendre d'un extra : sans lui, l'import échoue au démarrage.
+    "jinja2>=3.1",
 ]
 
 [dependency-groups]

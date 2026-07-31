@@ -8,6 +8,7 @@ dépendances, auth JWT, rate limiting) contre la base SQLite des fixtures.
 import logging
 
 from auth import create_access_token, credentials_fingerprint, get_password_hash
+from email_service import render_template
 from models import Activity, AdminUser
 
 # Fixtures : voir tests/conftest.py (client, auth_headers, db_session, sent_emails).
@@ -590,6 +591,36 @@ class TestAdminOnlyFieldsAreNotClientWritable:
         assert response.status_code == 200, response.text
         assert response.json()["code"] != "PEUIMPORTE00"
         assert response.json()["status"] == "pending"
+
+
+class TestEmailBodiesMatchTheirTemplates:
+    """Relie les contextes construits par `crud` aux templates qui les consomment.
+
+    Les fixtures d'email interceptent l'envoi : aucun test d'API n'exerce le rendu.
+    Depuis que `render_template` utilise `StrictUndefined`, une clé oubliée dans
+    `crud._validation_email_body` ne produirait plus un trou dans l'email mais un
+    échec d'envoi — silencieux pour l'adhérent. Ces tests le rendent visible ici.
+    """
+
+    def test_the_validation_body_renders(self, client, auth_headers, db_session, sent_emails):
+        activity = _create_activity(db_session, name="Danse", resident_price=100.0)
+        code = client.post(
+            "/api/adhesions", json={**ADHESION_PAYLOAD, "activities": [activity.id]}
+        ).json()["code"]
+        client.put(f"/api/adhesions/{code}/validate", headers=auth_headers)
+
+        html = render_template("validation_email.html", sent_emails[0]["body"])
+
+        assert "Danse" in html
+        assert code in html
+
+    def test_the_submission_body_renders(self, client, submission_emails):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        html = render_template("submission_email.html", submission_emails[0]["body"])
+
+        assert code in html
+        assert "Dupont" in html
 
 
 class TestReceipt:
