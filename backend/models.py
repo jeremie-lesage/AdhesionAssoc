@@ -32,7 +32,6 @@ class Adhesion(Base):
     nom = Column(String)
     prenom = Column(String)
     date_naissance = Column(String)
-    numero_rue = Column(String)
     nom_rue = Column(String)
     code_postal = Column(String)
     ville = Column(String)

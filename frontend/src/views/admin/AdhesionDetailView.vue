@@ -35,7 +35,7 @@
           <template #title>Adresse</template>
           <template #content>
             <dl class="info-list">
-              <dt>Rue</dt><dd>{{ adhesion.numero_rue }} {{ adhesion.nom_rue }}</dd>
+              <dt>Rue</dt><dd>{{ adhesion.nom_rue }}</dd>
               <dt>Code postal</dt><dd>{{ adhesion.code_postal }}</dd>
               <dt>Ville</dt><dd>{{ adhesion.ville }}</dd>
             </dl>

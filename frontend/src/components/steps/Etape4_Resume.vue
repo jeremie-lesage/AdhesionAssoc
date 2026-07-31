@@ -8,7 +8,7 @@
         <p><strong>Email:</strong> {{ formData.email }}</p>
         <p><strong>Adhérent:</strong> {{ formData.prenom }} {{ formData.nom }}</p>
         <p><strong>Date de Naissance:</strong> {{ formattedDateNaissance }}</p>
-        <p><strong>Adresse:</strong> {{ formData.numero_rue }}, {{ formData.nom_rue }} - {{ formData.code_postal }}
+        <p><strong>Adresse:</strong> {{ formData.nom_rue }} - {{ formData.code_postal }}
           {{ formData.ville }}</p>
         <p><strong>Montant Adhésion:</strong> {{ formData.adhesion_amount }}€</p>
         <p><strong>Activités sélectionnées:</strong></p>

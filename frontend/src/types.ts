@@ -23,7 +23,6 @@ export interface Adhesion {
   nom: string;
   prenom: string;
   date_naissance: string;
-  numero_rue: string;
   nom_rue: string;
   code_postal: string;
   ville: string;

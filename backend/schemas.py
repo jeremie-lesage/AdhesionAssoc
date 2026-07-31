@@ -89,9 +89,7 @@ class AdhesionBase(BaseModel):
     :type prenom: Optional[str]
     :ivar date_naissance: The birthdate of the individual in string format.
     :type date_naissance: Optional[str]
-    :ivar numero_rue: The street number of the individual's address.
-    :type numero_rue: Optional[str]
-    :ivar nom_rue: The street name of the individual's address.
+    :ivar nom_rue: The street number and name of the individual's address.
     :type nom_rue: Optional[str]
     :ivar code_postal: The postal code of the individual's address.
     :type code_postal: Optional[str]
@@ -107,7 +105,6 @@ class AdhesionBase(BaseModel):
     nom: str | None = None
     prenom: str | None = None
     date_naissance: str | None = None
-    numero_rue: str | None = None
     nom_rue: str | None = None
     code_postal: str | None = None
     ville: str | None = None
@@ -133,7 +130,6 @@ class AdhesionInput(BaseModel):
     nom: str | None = None
     prenom: str | None = None
     date_naissance: str | None = None
-    numero_rue: str | None = None
     nom_rue: str | None = None
     code_postal: str | None = None
     ville: str | None = None
