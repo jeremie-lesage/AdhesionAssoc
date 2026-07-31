@@ -5,7 +5,7 @@ import string
 import sys
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -185,8 +185,9 @@ def update_adhesion(code: str, adhesion: AdhesionInput, db: Session = Depends(ge
         raise HTTPException(status_code=500, detail=f"Database error: {e}") from e
 
 
-@app.get("/api/adhesions/{code}/receipt", response_class=HTMLResponse)
-def get_adhesion_receipt(code: str, db: Session = Depends(get_db)):
+@app.get("/api/adhesions/{code}/receipt", response_class=HTMLResponse,
+         dependencies=[Depends(rate_limit)])
+def get_adhesion_receipt(request: Request, code: str, db: Session = Depends(get_db)):
     adhesion = crud.get_adhesion_by_code(db, code)
     if adhesion is None or adhesion.status != 'paid':
         raise HTTPException(status_code=404, detail="Paid adhesion not found")
@@ -200,7 +201,6 @@ def get_adhesion_receipt(code: str, db: Session = Depends(get_db)):
         activities_details.append({"name": activity.name, "price": price})
 
     context = {
-        "request": {},
         "code": adhesion.code,
         "payment_date": datetime.now().strftime("%d/%m/%Y"),
         "prenom": adhesion.prenom,
@@ -211,7 +211,10 @@ def get_adhesion_receipt(code: str, db: Session = Depends(get_db)):
         "activities": activities_details,
         "total_cost": total_cost,
     }
-    return templates.TemplateResponse("receipt.html", context)
+    # Signature `(request, name, context)` : la forme `(name, context)` a été
+    # retirée dans Starlette 1.0, où elle prenait "receipt.html" pour la requête
+    # et le contexte pour le nom du template — 500 sur tout appel.
+    return templates.TemplateResponse(request, "receipt.html", context)
 
 
 @app.delete("/api/adhesions/{code}", status_code=204, dependencies=[Depends(get_current_admin)])

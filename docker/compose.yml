@@ -9,6 +9,18 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # Sans cela, uvicorn ne fait confiance qu'à 127.0.0.1 et ignore le
+      # `X-Forwarded-For` posé par Caddy : `request.client.host` vaut alors l'IP
+      # du conteneur proxy, et le compteur de `rate_limiter` devient commun à
+      # tous les visiteurs — un seul curieux fermerait le formulaire à toute la
+      # commune. La plage couvre l'adressage des bridges Docker (Caddy y est,
+      # quel que soit le sous-réseau attribué) ; aucune IP publique n'en fait
+      # partie, donc uvicorn retient bien celle du visiteur.
+      # Ne PAS mettre `*` : uvicorn prendrait alors l'entrée la plus à gauche de
+      # `X-Forwarded-For`, que le client écrit lui-même, et la limite se
+      # contournerait avec un en-tête variable (cf. tests
+      # TestRateLimitingBehindTheProxy).
+      FORWARDED_ALLOW_IPS: 172.16.0.0/12
     depends_on:
       - db
     networks:

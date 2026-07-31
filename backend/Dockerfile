@@ -21,4 +21,9 @@ EXPOSE 8000
 # `docker logs` fusionne les deux flux par horodatage d'écriture — d'où des lignes
 # qui paraissent dans le désordre. Tout sur un seul flux évite l'ambiguïté.
 # `exec` garde uvicorn en PID 1 pour que `docker stop` lui transmette bien SIGTERM.
-CMD ["sh", "-c", "exec uv run uvicorn main:app --host 0.0.0.0 --port 8000 2>&1"]
+# `--proxy-headers` est le défaut d'uvicorn, mais explicite ici parce que le rate
+# limiter en dépend : c'est ce middleware qui remplace l'IP du conteneur Caddy par
+# celle du visiteur. Les proxies de confiance viennent de `FORWARDED_ALLOW_IPS`
+# (docker/compose.yml) ; en dev, faute de cette variable, uvicorn ne fait
+# confiance qu'à 127.0.0.1 — ce qui est le bon défaut hors reverse proxy.
+CMD ["sh", "-c", "exec uv run uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers 2>&1"]

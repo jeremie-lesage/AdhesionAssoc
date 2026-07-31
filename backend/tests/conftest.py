@@ -25,6 +25,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 ADMIN_USERNAME = "admin-test"
 ADMIN_PASSWORD = "mot-de-passe-de-test"
 
+# Doit refléter `FORWARDED_ALLOW_IPS` du service backend dans docker/compose.yml.
+TRUSTED_PROXY_NETWORK = "172.16.0.0/12"
+
 
 @pytest.fixture(scope="session")
 def db_engine():
@@ -155,6 +158,31 @@ def client(db_session):
     main.app.dependency_overrides[get_db] = lambda: db_session
     try:
         yield TestClient(main.app)
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def proxied_client(db_session):
+    """TestClient passant par le middleware de proxy d'uvicorn.
+
+    Reproduit la production : Caddy joint le backend depuis une IP de bridge
+    Docker et pose `X-Forwarded-For`. C'est ce middleware — activé par défaut
+    dans uvicorn, avec `FORWARDED_ALLOW_IPS` fourni par `docker/compose.yml` —
+    qui remplace `scope["client"]` par l'IP réelle du visiteur, dont dépend le
+    comptage de `rate_limiter`.
+    """
+    from fastapi.testclient import TestClient
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    import main
+    from database import get_db
+
+    main.app.dependency_overrides[get_db] = lambda: db_session
+    proxied = ProxyHeadersMiddleware(main.app, trusted_hosts=TRUSTED_PROXY_NETWORK)
+    try:
+        # `client` : l'adresse du conteneur Caddy, dans la plage de confiance.
+        yield TestClient(proxied, client=("172.18.0.2", 45678))
     finally:
         main.app.dependency_overrides.clear()
 

@@ -455,6 +455,141 @@ class TestAdminOnlyFieldsAreNotClientWritable:
         assert response.json()["status"] == "pending"
 
 
+class TestReceipt:
+    """`GET /api/adhesions/{code}/receipt` — reçu HTML, route publique.
+
+    Aucun test ne la couvrait, et l'appel à `TemplateResponse` utilisait la
+    signature retirée dans Starlette 1.0 : la route répondait 500 pour tout le
+    monde.
+    """
+
+    def test_a_paid_adhesion_renders_its_receipt(self, client, auth_headers, db_session):
+        activity = _create_activity(db_session, name="Danse", resident_price=100.0)
+        code = _pay(client, auth_headers, {**ADHESION_PAYLOAD, "activities": [activity.id]})
+
+        response = client.get(f"/api/adhesions/{code}/receipt")
+
+        assert response.status_code == 200, response.text
+        assert "Dupont" in response.text
+        assert "Danse" in response.text
+        # 15 € d'adhésion + 100 € au tarif résident (Fauverney).
+        assert "115.0 €" in response.text
+
+    def test_an_unpaid_adhesion_has_no_receipt(self, client):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+
+        assert client.get(f"/api/adhesions/{code}/receipt").status_code == 404
+
+    def test_an_unknown_code_has_no_receipt(self, client):
+        assert client.get("/api/adhesions/INCONNU12345/receipt").status_code == 404
+
+
+class TestRateLimiting:
+    """La clé de comptage doit porter le motif de route, pas le chemin résolu.
+
+    Indexée sur `request.url.path`, chaque code essayé ouvrait un compteur neuf :
+    la limite n'était jamais atteinte, quel que soit le nombre de codes tentés —
+    le rate limiter n'entravait donc en rien l'énumération.
+
+    Les deux constantes ci-dessous doivent refléter `rate_limiter.RATE_LIMITS`.
+    """
+
+    READ_LIMIT = 30
+    WRITE_LIMIT = 5
+
+    def test_probing_many_codes_hits_the_limit(self, client):
+        for i in range(self.READ_LIMIT):
+            assert client.get(f"/api/adhesions/INCONNU{i:05d}").status_code == 404
+
+        blocked = client.get("/api/adhesions/UNAUTRECODE1")
+
+        assert blocked.status_code == 429
+
+    def test_the_receipt_is_rate_limited(self, client, auth_headers):
+        """`GET /api/adhesions/{code}/receipt` n'avait aucune dépendance : ni
+        authentification, ni limite."""
+        code = _pay(client, auth_headers)
+        for _ in range(self.READ_LIMIT):
+            assert client.get(f"/api/adhesions/{code}/receipt").status_code == 200
+
+        blocked = client.get(f"/api/adhesions/{code}/receipt")
+
+        assert blocked.status_code == 429
+
+    def test_each_route_keeps_its_own_counter(self, client):
+        """Épuiser le quota de création ne doit pas fermer la lecture.
+
+        Le back-office consulte les dossiers par `GET /api/adhesions/{code}` :
+        un compteur unique pour tout `/api/adhesions` le bloquerait.
+        """
+        for i in range(self.WRITE_LIMIT):
+            created = client.post(
+                "/api/adhesions", json={**ADHESION_PAYLOAD, "email": f"a{i}@example.com"}
+            )
+            assert created.status_code == 200, created.text
+        assert client.post("/api/adhesions", json=ADHESION_PAYLOAD).status_code == 429
+
+        assert client.get("/api/adhesions/INCONNU12345").status_code == 404
+
+    def test_reading_stays_open_far_beyond_the_write_limit(self, client, auth_headers):
+        """Un admin dépouille plus de cinq dossiers par minute."""
+        code = _pay(client, auth_headers)
+
+        for _ in range(self.WRITE_LIMIT * 2):
+            assert client.get(f"/api/adhesions/{code}").status_code == 200
+
+
+class TestRateLimitingBehindTheProxy:
+    """Le compteur doit porter l'IP du visiteur, pas celle du conteneur Caddy.
+
+    Sans les en-têtes de proxy, `request.client.host` vaut toujours l'IP de
+    Caddy : la limite serait commune à tous les visiteurs, et le premier curieux
+    fermerait le formulaire à toute la commune.
+    """
+
+    READ_LIMIT = TestRateLimiting.READ_LIMIT
+
+    def test_two_visitors_are_counted_separately(self, proxied_client):
+        for _ in range(self.READ_LIMIT):
+            response = proxied_client.get(
+                "/api/adhesions/INCONNU12345", headers={"X-Forwarded-For": "203.0.113.1"}
+            )
+            assert response.status_code == 404
+
+        blocked = proxied_client.get(
+            "/api/adhesions/INCONNU12345", headers={"X-Forwarded-For": "203.0.113.1"}
+        )
+        assert blocked.status_code == 429
+
+        other = proxied_client.get(
+            "/api/adhesions/INCONNU12345", headers={"X-Forwarded-For": "203.0.113.2"}
+        )
+        assert other.status_code == 404
+
+    def test_a_forged_forwarded_for_does_not_reset_the_counter(self, proxied_client):
+        """Caddy *ajoute* l'IP réelle derrière ce que le client a écrit.
+
+        uvicorn remonte donc la liste de droite à gauche et retient la première
+        entrée hors plage de confiance. C'est pourquoi `FORWARDED_ALLOW_IPS` doit
+        énumérer des hôtes : avec `*`, uvicorn prendrait l'entrée la plus à
+        gauche — celle du client — et un simple en-tête variable suffirait à
+        contourner la limite.
+        """
+        for i in range(self.READ_LIMIT):
+            response = proxied_client.get(
+                "/api/adhesions/INCONNU12345",
+                headers={"X-Forwarded-For": f"198.51.100.{i}, 203.0.113.7"},
+            )
+            assert response.status_code == 404
+
+        blocked = proxied_client.get(
+            "/api/adhesions/INCONNU12345",
+            headers={"X-Forwarded-For": "198.51.100.254, 203.0.113.7"},
+        )
+
+        assert blocked.status_code == 429
+
+
 class TestActivities:
     def test_listing_activities_is_public(self, client, db_session):
         _create_activity(db_session, name="Danse")
