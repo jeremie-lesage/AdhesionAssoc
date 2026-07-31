@@ -1,3 +1,5 @@
+import random
+import string
 from datetime import date, timedelta
 
 import pytest
@@ -33,6 +35,42 @@ def _birthdate_for_age(age: int) -> str:
     que soient les années bissextiles traversées.
     """
     return (date.today() - timedelta(days=age * 365 + 5)).strftime("%Y-%m-%d")
+
+
+# ─── Génération des codes d'accès ────────────────────────────────
+
+
+class TestGenerateRandomCode:
+    """Le code est le seul authentifiant de l'adhérent.
+
+    Il ouvre `GET /api/adhesions/{code}` (données personnelles complètes),
+    `PUT /api/adhesions/{code}` et le reçu. Il doit donc venir d'une source
+    cryptographique, pas du PRNG généraliste du processus.
+    """
+
+    def test_the_code_does_not_depend_on_the_global_prng_state(self):
+        """`random.seed(n)` ne doit pas rendre les codes rejouables.
+
+        Le Mersenne Twister est réversible : à partir d'assez de sorties
+        observées — et `POST /api/adhesions` renvoie le code à son auteur — son
+        état interne se reconstitue, livrant les codes passés comme à venir.
+        """
+        state = random.getstate()
+        try:
+            random.seed(0)
+            first = crud.generate_random_code()
+            random.seed(0)
+            second = crud.generate_random_code()
+        finally:
+            random.setstate(state)
+
+        assert first != second
+
+    def test_uses_the_expected_length_and_alphabet(self):
+        code = crud.generate_random_code()
+
+        assert len(code) == 12
+        assert set(code) <= set(string.ascii_uppercase + string.digits)
 
 
 # ─── Adhesion CRUD ───────────────────────────────────────────────

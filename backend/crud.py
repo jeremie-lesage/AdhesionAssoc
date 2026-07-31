@@ -1,5 +1,5 @@
 import logging
-import random
+import secrets
 import string
 from collections import defaultdict
 from datetime import date, datetime
@@ -29,8 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 def generate_random_code(length=12):
+    """Code d'accès d'une adhésion — son unique authentifiant.
+
+    `secrets.choice` et non `random.choice` : ce code ouvre la lecture des
+    données personnelles et la modification de l'adhésion. Le PRNG généraliste
+    de Python est un Mersenne Twister, réversible depuis assez de sorties
+    observées, et `POST /api/adhesions` renvoie justement le code à son auteur.
+    Même idiome que le mot de passe admin de bootstrap dans `main.py`.
+    """
     letters = string.ascii_uppercase + string.digits
-    return ''.join(random.choice(letters) for _ in range(length))
+    return ''.join(secrets.choice(letters) for _ in range(length))
 
 
 # Adhesion CRUD
