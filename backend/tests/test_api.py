@@ -5,7 +5,10 @@ dépendances, auth JWT, rate limiting) contre la base SQLite des fixtures.
 `crud` est testé séparément dans test_crud.py.
 """
 
-from models import Activity
+import logging
+
+from auth import create_access_token, credentials_fingerprint, get_password_hash
+from models import Activity, AdminUser
 
 # Fixtures : voir tests/conftest.py (client, auth_headers, db_session, sent_emails).
 
@@ -100,6 +103,86 @@ class TestAdhesionsAuthorization:
 
         assert response.status_code == 200
         assert response.json() == []
+
+
+class TestTokenRevocation:
+    """Le jeton doit refléter l'état du compte, pas seulement une signature.
+
+    `get_current_admin` ne consultait jamais la table `admins` : un jeton restait
+    pleinement valide après suppression du compte ou changement de mot de passe,
+    jusqu'à son expiration. Un administrateur dont on retire les droits gardait
+    donc un accès complet au back-office — de quoi exporter la liste des
+    adhérents ou se recréer un compte via `POST /api/admins`.
+    """
+
+    def _stored_admin(self, db_session, username):
+        return db_session.query(AdminUser).filter(AdminUser.username == username).one()
+
+    def test_a_token_stops_working_once_the_account_is_deleted(
+        self, client, auth_headers, admin_user, db_session
+    ):
+        username, _ = admin_user
+        assert client.get("/api/adhesions", headers=auth_headers).status_code == 200
+
+        db_session.delete(self._stored_admin(db_session, username))
+        db_session.commit()
+
+        assert client.get("/api/adhesions", headers=auth_headers).status_code == 401
+
+    def test_a_token_stops_working_after_a_password_change(
+        self, client, auth_headers, admin_user, db_session
+    ):
+        username, _ = admin_user
+
+        admin = self._stored_admin(db_session, username)
+        admin.hashed_password = get_password_hash("un-autre-mot-de-passe")
+        db_session.commit()
+
+        assert client.get("/api/adhesions", headers=auth_headers).status_code == 401
+
+    def test_a_token_without_the_credentials_fingerprint_is_rejected(self, client, admin_user):
+        """Forme du jeton d'avant le correctif : signature valide, mais rien qui
+        le rattache au mot de passe courant."""
+        username, _ = admin_user
+        legacy = create_access_token({"sub": username})
+
+        response = client.get("/api/adhesions", headers={"Authorization": f"Bearer {legacy}"})
+
+        assert response.status_code == 401
+
+    def test_a_fingerprint_from_another_account_is_rejected(
+        self, client, admin_user, db_session
+    ):
+        """Le claim doit correspondre au compte nommé dans `sub`."""
+        username, _ = admin_user
+        other = AdminUser(username="autre-admin", hashed_password=get_password_hash("x"))
+        db_session.add(other)
+        db_session.commit()
+
+        forged = create_access_token(
+            {"sub": username, "pv": credentials_fingerprint(other.hashed_password)}
+        )
+
+        response = client.get("/api/adhesions", headers={"Authorization": f"Bearer {forged}"})
+
+        assert response.status_code == 401
+
+    def test_a_password_change_does_not_lock_out_a_freshly_issued_token(
+        self, client, admin_user, db_session
+    ):
+        """Après changement, une nouvelle connexion doit fonctionner."""
+        username, _ = admin_user
+        admin = self._stored_admin(db_session, username)
+        admin.hashed_password = get_password_hash("nouveau-mot-de-passe")
+        db_session.commit()
+
+        token = client.post(
+            "/api/token", data={"username": username, "password": "nouveau-mot-de-passe"}
+        )
+        assert token.status_code == 200, token.text
+
+        headers = {"Authorization": f"Bearer {token.json()['access_token']}"}
+        assert client.get("/api/adhesions", headers=headers).status_code == 200
 
 
 class TestCreateAdhesion:
@@ -386,6 +469,60 @@ class TestUpdateAdhesion:
         code = _pay(client, auth_headers)
 
         assert client.put(f"/api/adhesions/{code}/invalidate").status_code == 401
+
+
+class TestInternalErrorsAreNotDisclosed:
+    """Une erreur inattendue ne doit rien révéler du schéma de la base.
+
+    `PUT /api/adhesions/{code}` est public. Les exceptions SQLAlchemy portent
+    l'instruction SQL complète, les noms de table et de colonne, les paramètres
+    liés et le message natif PostgreSQL : les renvoyer dans `detail` livre la
+    cartographie de la base à un client non authentifié.
+    """
+
+    # Ce que contiendrait une exception SQLAlchemy réelle.
+    LEAK = (
+        '(psycopg2.errors.NumericValueOutOfRange) value overflows numeric format\n'
+        '[SQL: UPDATE adhesions SET discount_amount=%(discount_amount)s '
+        'WHERE adhesions.id = %(adhesions_id)s]'
+    )
+
+    def _break_update(self, monkeypatch):
+        import crud
+
+        def _explode(*args, **kwargs):
+            raise RuntimeError(self.LEAK)
+
+        monkeypatch.setattr(crud, "update_adhesion", _explode)
+
+    def test_the_response_carries_no_database_detail(self, client, monkeypatch):
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+        self._break_update(monkeypatch)
+
+        response = client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "nom": "X"})
+
+        assert response.status_code == 500
+        body = response.text
+        for revealing in ("psycopg2", "UPDATE", "adhesions", "discount_amount", "SQL"):
+            assert revealing not in body, f"la réponse divulgue « {revealing} » : {body}"
+
+    def test_an_unknown_code_still_answers_404(self, client):
+        """Le `except Exception` avalait le 404 levé dans le `try` et le
+        retournait en 500, avec le message de l'HTTPException dans `detail`."""
+        response = client.put("/api/adhesions/INCONNU12345", json=ADHESION_PAYLOAD)
+
+        assert response.status_code == 404, response.text
+
+    def test_the_exception_is_logged_with_its_traceback(self, client, monkeypatch, caplog):
+        """Le détail doit rester disponible côté serveur, pas côté client."""
+        code = client.post("/api/adhesions", json=ADHESION_PAYLOAD).json()["code"]
+        self._break_update(monkeypatch)
+
+        with caplog.at_level(logging.ERROR):
+            client.put(f"/api/adhesions/{code}", json={**ADHESION_PAYLOAD, "nom": "X"})
+
+        assert "psycopg2" in caplog.text
+        assert any(record.exc_info for record in caplog.records), "aucune trace journalisée"
 
 
 class TestAdminOnlyFieldsAreNotClientWritable:

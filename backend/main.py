@@ -13,7 +13,13 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 import crud
-from auth import create_access_token, get_current_admin, get_password_hash, verify_password
+from auth import (
+    create_access_token,
+    credentials_fingerprint,
+    get_current_admin,
+    get_password_hash,
+    verify_password,
+)
 from config import settings
 from database import create_tables, get_db
 from email_service import EmailSendError
@@ -42,6 +48,8 @@ logging.basicConfig(
     stream=sys.stdout,
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
 )
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -101,7 +109,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": admin.username})
+    # `pv` lie le jeton au mot de passe courant : le redéfinir invalide les jetons
+    # déjà émis (cf. auth.credentials_fingerprint).
+    access_token = create_access_token(
+        data={"sub": admin.username, "pv": credentials_fingerprint(admin.hashed_password)}
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -176,13 +188,23 @@ def pay_adhesion(code: str, payment_update: AdhesionPaymentUpdate, db: Session =
 def update_adhesion(code: str, adhesion: AdhesionInput, db: Session = Depends(get_db)):
     try:
         updated_adhesion = crud.update_adhesion(db, code, adhesion)
-        if updated_adhesion is None:
-            raise HTTPException(status_code=404, detail="AdhesionSchema not found")
-        return updated_adhesion
     except ValueError as e:
+        # Refus métier (statut non modifiable, quota, date limite) : le message
+        # est écrit pour l'adhérent, il peut sortir tel quel.
         raise HTTPException(status_code=403, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {e}") from e
+        # Route publique : les exceptions SQLAlchemy portent l'instruction SQL,
+        # les noms de table et de colonne, les paramètres liés et le message natif
+        # PostgreSQL. Le diagnostic reste dans les logs du serveur, le client
+        # n'obtient qu'un message générique.
+        logger.exception("Échec de la mise à jour de l'adhésion %s", code)
+        raise HTTPException(status_code=500, detail="Erreur interne") from e
+
+    # Hors du `try` : le `except Exception` ci-dessus attrapait ce 404 et le
+    # renvoyait en 500, en recopiant au passage le message de l'HTTPException.
+    if updated_adhesion is None:
+        raise HTTPException(status_code=404, detail="AdhesionSchema not found")
+    return updated_adhesion
 
 
 @app.get("/api/adhesions/{code}/receipt", response_class=HTMLResponse,
