@@ -787,6 +787,30 @@ class TestActivities:
         assert response.status_code == 201, response.text
         assert response.json()["name"] == "Judo"
 
+    def test_activity_exposes_document_filename(self, client, db_session):
+        _create_activity(db_session, name="Gym")
+
+        response = client.get("/api/activities")
+
+        assert response.status_code == 200
+        assert response.json()[0]["document_filename"] is None
+
+    def test_document_filename_cannot_be_set_through_update(
+        self, client, auth_headers, db_session
+    ):
+        # `PUT` prend un `ActivityCreate` : le champ n'y figure pas, donc un client
+        # ne peut pas faire diverger la colonne du fichier réellement stocké.
+        activity = _create_activity(db_session, name="Gym")
+
+        response = client.put(
+            f"/api/activities/{activity.id}",
+            json={"name": "Gym", "document_filename": "faux.pdf"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["document_filename"] is None
+
 
 class TestDashboardStats:
     def test_counts_residents_and_statuses(self, client, auth_headers):

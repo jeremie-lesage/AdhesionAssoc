@@ -67,6 +67,11 @@ class Activity(Base):
     day_of_week = Column(Integer, nullable=True)
     start_time = Column(Time, nullable=True)
     end_time = Column(Time, nullable=True)
+    # Nom d'origine du PDF à remplir et signer, ou NULL si l'activité n'en exige
+    # aucun. Le fichier lui-même vit à `{UPLOAD_DIR}/activities/{id}.pdf` : le
+    # chemin est dérivé de l'id, ce nom ne sert que de libellé d'affichage et de
+    # téléchargement. Écrit uniquement par les routes de document.
+    document_filename = Column(String, nullable=True)
 
     adhesions = relationship("Adhesion", secondary=adhesion_activity_association, back_populates="activities")
 

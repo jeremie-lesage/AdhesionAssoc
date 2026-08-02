@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # Âge à partir duquel un adhérent est compté comme adulte dans les
     # statistiques du tableau de bord (en dessous : enfant).
     ADULT_AGE_THRESHOLD: int = 16
+    # Racine des fichiers téléversés par les admins (documents PDF des activités).
+    # En production, un volume Docker : sans lui les fichiers disparaîtraient à
+    # chaque redéploiement de l'image.
+    UPLOAD_DIR: str = "uploads"
 
     class Config:
         env_file = ".env"

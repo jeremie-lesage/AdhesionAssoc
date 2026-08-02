@@ -67,6 +67,11 @@ class ActivitySchema(ActivityBase):
     """
     id: int
     current_participants: int | None = 0
+    # En sortie seulement, volontairement absent d'`ActivityBase` : `ActivityCreate`
+    # sert de corps au `PUT /api/activities/{id}`, et si le champ y figurait un admin
+    # pourrait faire pointer la colonne vers un nom arbitraire sans qu'aucun fichier
+    # change. La colonne n'est écrite que par les routes de document.
+    document_filename: str | None = None
 
     class Config:
         from_attributes = True
