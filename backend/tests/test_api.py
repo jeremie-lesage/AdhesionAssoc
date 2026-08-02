@@ -956,6 +956,35 @@ class TestActivityDocuments:
 
         assert response.status_code == 404
 
+    def test_deleting_the_activity_removes_its_document_from_disk(
+        self, client, auth_headers, db_session
+    ):
+        """Sans cela, chaque activité supprimée laisse un PDF orphelin dans le
+        volume, que plus rien ne référence et que personne ne viendra purger."""
+        import documents
+
+        activity = _create_activity(db_session, name="Gym")
+        self._upload(client, activity.id, auth_headers)
+        assert documents.document_path(activity.id).exists()
+
+        response = client.delete(
+            f"/api/activities/{activity.id}", headers=auth_headers
+        )
+
+        assert response.status_code == 204
+        assert not documents.document_path(activity.id).exists()
+
+    def test_deleting_an_activity_without_a_document_still_succeeds(
+        self, client, auth_headers, db_session
+    ):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = client.delete(
+            f"/api/activities/{activity.id}", headers=auth_headers
+        )
+
+        assert response.status_code == 204
+
 
 class TestDashboardStats:
     def test_counts_residents_and_statuses(self, client, auth_headers):

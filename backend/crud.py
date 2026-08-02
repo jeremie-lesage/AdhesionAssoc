@@ -337,6 +337,10 @@ def delete_activity(db: Session, activity_id: int) -> bool:
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if activity is None:
         return False
+    # Le document suit l'activité : sans cela chaque suppression laisserait un PDF
+    # orphelin dans le volume, que plus rien ne référence et que personne ne
+    # viendra purger. `documents.delete` est indulgent si le fichier n'existe pas.
+    documents.delete(activity_id)
     db.delete(activity)
     db.commit()
     return True
