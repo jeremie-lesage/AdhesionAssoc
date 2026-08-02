@@ -21,6 +21,12 @@ services:
       # contournerait avec un en-tête variable (cf. tests
       # TestRateLimitingBehindTheProxy).
       FORWARDED_ALLOW_IPS: 172.16.0.0/12
+    volumes:
+      # Documents PDF téléversés par les admins (`UPLOAD_DIR`, relatif au
+      # `WORKDIR /app` du Dockerfile). Sans ce volume, ils disparaîtraient à
+      # chaque redéploiement de l'image, alors que `document_filename` resterait
+      # renseigné en base : le téléchargement retournerait 404.
+      - uploads:/app/uploads
     depends_on:
       - db
     networks:
@@ -96,6 +102,7 @@ volumes:
   db_data:
   caddy_data:
   db_backup_data:
+  uploads:
 
 networks:
   foyer-net:
