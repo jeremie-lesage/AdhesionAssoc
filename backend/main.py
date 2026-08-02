@@ -5,14 +5,15 @@ import string
 import sys
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 import crud
+import documents
 from auth import (
     create_access_token,
     credentials_fingerprint,
@@ -280,6 +281,60 @@ def create_activity(activity: ActivityCreate, db: Session = Depends(get_db)):
 def delete_activity(activity_id: int, db: Session = Depends(get_db)):
     if not crud.delete_activity(db, activity_id):
         raise HTTPException(status_code=404, detail="ActivitySchema not found")
+
+
+@app.post("/api/activities/{activity_id}/document", response_model=ActivitySchema,
+          dependencies=[Depends(get_current_admin)])
+def upload_activity_document(
+    activity_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Attache à l'activité le PDF que l'adhérent devra remplir et signer."""
+    try:
+        return crud.store_activity_document(db, activity_id, file.file, file.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Activity not found") from e
+    except documents.NotAPdf as e:
+        raise HTTPException(
+            status_code=415, detail="Le document doit être un fichier PDF."
+        ) from e
+    except documents.DocumentTooLarge as e:
+        raise HTTPException(
+            status_code=413, detail="Le document ne doit pas dépasser 10 Mo."
+        ) from e
+
+
+@app.delete("/api/activities/{activity_id}/document", status_code=204,
+            dependencies=[Depends(get_current_admin)])
+def delete_activity_document(activity_id: int, db: Session = Depends(get_db)):
+    if not crud.remove_activity_document(db, activity_id):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
+@app.get("/api/activities/{activity_id}/document",
+         dependencies=[Depends(rate_limit)])
+def download_activity_document(activity_id: int, db: Session = Depends(get_db)):
+    """Route publique : l'adhérent doit pouvoir récupérer le document depuis le
+    formulaire comme depuis le lien reçu par email, sans compte."""
+    activity = crud.get_activity(db, activity_id)
+    if activity is None or activity.document_filename is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    path = documents.document_path(activity_id)
+    if not path.exists():
+        # Base et disque désynchronisés : le volume a été perdu (les documents ne
+        # sont pas dans les sauvegardes). Mieux vaut un 404 franc qu'une 500.
+        logger.error(
+            "Document manquant sur le disque pour l'activité %s (%s)",
+            activity_id,
+            path,
+        )
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return FileResponse(
+        path, media_type="application/pdf", filename=activity.document_filename
+    )
 
 
 # Admin Endpoints

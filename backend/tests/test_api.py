@@ -7,6 +7,8 @@ dépendances, auth JWT, rate limiting) contre la base SQLite des fixtures.
 
 import logging
 
+import pytest
+
 from auth import create_access_token, credentials_fingerprint, get_password_hash
 from email_service import render_template
 from models import Activity, AdminUser
@@ -810,6 +812,149 @@ class TestActivities:
 
         assert response.status_code == 200, response.text
         assert response.json()["document_filename"] is None
+
+
+class TestActivityDocuments:
+    """Documents PDF à remplir et signer, attachés à une activité."""
+
+    @pytest.fixture(autouse=True)
+    def upload_dir(self, monkeypatch, tmp_path):
+        import documents
+
+        monkeypatch.setattr(documents.settings, "UPLOAD_DIR", str(tmp_path))
+        return tmp_path
+
+    @staticmethod
+    def _upload(client, activity_id, headers, content=b"%PDF-1.7 contenu",
+                filename="reglement.pdf"):
+        return client.post(
+            f"/api/activities/{activity_id}/document",
+            files={"file": (filename, content, "application/pdf")},
+            headers=headers,
+        )
+
+    def test_uploading_requires_a_token(self, client, db_session):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = self._upload(client, activity.id, headers={})
+
+        assert response.status_code == 401
+
+    def test_deleting_requires_a_token(self, client, db_session):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = client.delete(f"/api/activities/{activity.id}/document")
+
+        assert response.status_code == 401
+
+    def test_uploading_to_an_unknown_activity_returns_404(self, client, auth_headers):
+        response = self._upload(client, 99999, auth_headers)
+
+        assert response.status_code == 404
+
+    def test_uploading_a_pdf_records_the_original_filename(
+        self, client, auth_headers, db_session
+    ):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = self._upload(client, activity.id, auth_headers)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["document_filename"] == "reglement.pdf"
+
+    def test_uploading_a_non_pdf_returns_415(self, client, auth_headers, db_session):
+        # Nom et content-type mentent : seuls les octets décident.
+        activity = _create_activity(db_session, name="Gym")
+
+        response = self._upload(
+            client, activity.id, auth_headers, content=b"GIF89a pas un pdf"
+        )
+
+        assert response.status_code == 415
+
+    def test_a_rejected_upload_leaves_the_activity_untouched(
+        self, client, auth_headers, db_session
+    ):
+        activity = _create_activity(db_session, name="Gym")
+
+        self._upload(client, activity.id, auth_headers, content=b"pas un pdf")
+
+        listed = client.get("/api/activities").json()
+        assert listed[0]["document_filename"] is None
+
+    def test_uploading_over_the_size_limit_returns_413(
+        self, client, auth_headers, db_session
+    ):
+        import documents
+
+        activity = _create_activity(db_session, name="Gym")
+        oversized = b"%PDF-1.7\n" + b"a" * documents.MAX_DOCUMENT_BYTES
+
+        response = self._upload(client, activity.id, auth_headers, content=oversized)
+
+        assert response.status_code == 413
+
+    def test_a_second_upload_replaces_the_first(self, client, auth_headers, db_session):
+        activity = _create_activity(db_session, name="Gym")
+        self._upload(client, activity.id, auth_headers, filename="ancien.pdf")
+
+        self._upload(
+            client, activity.id, auth_headers, content=b"%PDF-1.7 nouveau",
+            filename="nouveau.pdf",
+        )
+
+        download = client.get(f"/api/activities/{activity.id}/document")
+        assert download.content == b"%PDF-1.7 nouveau"
+        assert client.get("/api/activities").json()[0]["document_filename"] == "nouveau.pdf"
+
+    def test_downloading_is_public(self, client, auth_headers, db_session):
+        activity = _create_activity(db_session, name="Gym")
+        self._upload(client, activity.id, auth_headers)
+
+        response = client.get(f"/api/activities/{activity.id}/document")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-1.7 contenu"
+        assert response.headers["content-type"] == "application/pdf"
+        assert "reglement.pdf" in response.headers["content-disposition"]
+        assert response.headers["content-disposition"].startswith("attachment")
+
+    def test_downloading_without_a_document_returns_404(self, client, db_session):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = client.get(f"/api/activities/{activity.id}/document")
+
+        assert response.status_code == 404
+
+    def test_downloading_an_unknown_activity_returns_404(self, client):
+        response = client.get("/api/activities/99999/document")
+
+        assert response.status_code == 404
+
+    def test_deleting_clears_the_filename_and_the_file(
+        self, client, auth_headers, db_session
+    ):
+        activity = _create_activity(db_session, name="Gym")
+        self._upload(client, activity.id, auth_headers)
+
+        response = client.delete(
+            f"/api/activities/{activity.id}/document", headers=auth_headers
+        )
+
+        assert response.status_code == 204
+        assert client.get("/api/activities").json()[0]["document_filename"] is None
+        assert client.get(f"/api/activities/{activity.id}/document").status_code == 404
+
+    def test_deleting_a_missing_document_returns_404(
+        self, client, auth_headers, db_session
+    ):
+        activity = _create_activity(db_session, name="Gym")
+
+        response = client.delete(
+            f"/api/activities/{activity.id}/document", headers=auth_headers
+        )
+
+        assert response.status_code == 404
 
 
 class TestDashboardStats:

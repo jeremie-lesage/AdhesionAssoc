@@ -18,6 +18,11 @@ DEFAULT_RATE_LIMIT = 5
 RATE_LIMITS = {
     "GET /api/adhesions/{code}": 30,
     "GET /api/adhesions/{code}/receipt": 30,
+    # Un adhérent inscrit à plusieurs activités télécharge plusieurs documents
+    # d'affilée, et rouvre volontiers le lien de l'email. La limite par défaut de
+    # 5/minute gênerait l'usage normal sans rien protéger : ces fichiers sont
+    # publics et identiques pour tous.
+    "GET /api/activities/{activity_id}/document": 30,
 }
 
 # (ip, méthode, route) -> [nombre de requêtes, début de fenêtre]. Dict de module,

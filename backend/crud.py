@@ -6,6 +6,7 @@ from datetime import date, datetime
 
 from sqlalchemy.orm import Session, selectinload
 
+import documents
 from config import settings
 from email_service import EmailSendError, send_submission_email, send_validation_email
 from models import Activity, Adhesion
@@ -314,6 +315,46 @@ def delete_activity(db: Session, activity_id: int) -> bool:
     if activity is None:
         return False
     db.delete(activity)
+    db.commit()
+    return True
+
+
+def get_activity(db: Session, activity_id: int) -> Activity | None:
+    """Renvoie le modèle, pas le schéma : la route de téléchargement n'a besoin
+    que de `document_filename`, et sérialiser l'activité entière serait inutile."""
+    return db.query(Activity).filter(Activity.id == activity_id).first()
+
+
+def store_activity_document(
+    db: Session, activity_id: int, source, filename: str | None
+) -> ActivitySchema:
+    """Attache un document PDF à une activité.
+
+    L'ordre compte : on vérifie d'abord que l'activité existe, sinon un upload sur
+    un id inconnu écrirait un fichier orphelin que rien ne référencerait ensuite.
+
+    Lève `ValueError` si l'activité n'existe pas, et propage `documents.NotAPdf`
+    ou `documents.DocumentTooLarge` — c'est à l'appelant HTTP de les traduire.
+    """
+    activity = get_activity(db, activity_id)
+    if activity is None:
+        raise ValueError("Activity not found")
+
+    documents.store(activity_id, source)
+    activity.document_filename = documents.sanitize_filename(filename)
+    db.commit()
+    db.refresh(activity)
+    return ActivitySchema.model_validate(activity)
+
+
+def remove_activity_document(db: Session, activity_id: int) -> bool:
+    """Détache le document. `False` si l'activité ou le document n'existe pas."""
+    activity = get_activity(db, activity_id)
+    if activity is None or activity.document_filename is None:
+        return False
+
+    documents.delete(activity_id)
+    activity.document_filename = None
     db.commit()
     return True
 
