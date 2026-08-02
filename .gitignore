@@ -12,6 +12,11 @@ docker-entrypoint-initdb.d
 *.sql.gz
 *.dump
 
+# Documents PDF téléversés par les admins (UPLOAD_DIR). En production c'est un
+# volume Docker ; en dev, les fichiers atterrissent ici et n'ont rien à faire
+# dans un dépôt public.
+backend/uploads/
+
 # Secrets d'environnement. Le modèle sans valeurs est docker/.env.example.
 .env
 .env.*

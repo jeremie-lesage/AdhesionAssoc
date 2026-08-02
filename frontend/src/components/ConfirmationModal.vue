@@ -17,16 +17,32 @@
         <p>Pour toute modification, conservez votre code de dossier :</p>
         <p class="form-id"><strong>{{ formId }}</strong></p>
       </div>
+      <div v-if="documents.length" class="documents-section">
+        <p><strong>Documents à imprimer et signer</strong></p>
+        <p class="documents-hint">
+          À remplir et à remettre au responsable de l'activité lors de la première
+          séance. Les liens figurent aussi dans l'email que vous allez recevoir.
+        </p>
+        <ul>
+          <li v-for="activity in documents" :key="activity.id!">
+            <a :href="documentUrl(activity)" target="_blank">{{ activity.name }}</a>
+          </li>
+        </ul>
+      </div>
       <button @click="close" class="close-button">Fermer</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import type { Activity } from '@/types';
+import { documentUrl } from '@/documents';
+
+withDefaults(defineProps<{
   visible: boolean,
-  formId: string
-}>()
+  formId: string,
+  documents?: Activity[]
+}>(), { documents: () => [] })
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -137,6 +153,27 @@ p {
 
 .code-section p {
   margin: 0;
+}
+
+.documents-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-left: 4px solid #b9770e;
+  background-color: #fdf6e3;
+  text-align: left;
+}
+
+.documents-section p {
+  margin: 0 0 0.5rem;
+}
+
+.documents-hint {
+  font-size: 0.9rem;
+}
+
+.documents-section ul {
+  margin: 0;
+  padding-left: 1.2rem;
 }
 
 .form-id {

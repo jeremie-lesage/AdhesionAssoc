@@ -18,6 +18,18 @@
           </li>
         </ul>
         <p><strong>Coût total:</strong> {{ totalCost }}€</p>
+        <div v-if="documentsRequired.length" class="documents-notice">
+          <strong>Documents à imprimer et signer</strong>
+          <p>
+            Merci de les remplir et de les remettre au responsable de l'activité lors
+            de la première séance.
+          </p>
+          <ul>
+            <li v-for="activity in documentsRequired" :key="activity.id!">
+              <a :href="documentUrl(activity)" target="_blank">{{ activity.name }}</a>
+            </li>
+          </ul>
+        </div>
       </div>
       <div class="payment-section">
         <h3>Moyens de paiement</h3>
@@ -37,7 +49,8 @@
     <button @click="prevStep">Précédent</button>
     <button @click="submitForm">Valider</button>
 
-    <ConfirmationModal :visible="isModalVisible" :form-id="formIdToDisplay" @close="handleModalClose" />
+    <ConfirmationModal :visible="isModalVisible" :form-id="formIdToDisplay"
+                       :documents="documentsRequired" @close="handleModalClose" />
   </div>
 
 </template>
@@ -49,6 +62,7 @@ import api from '@/api';
 import {useRouter} from 'vue-router';
 import type {Activity} from '@/types';
 import { activitiesCost, activityPrice } from '@/pricing';
+import { documentUrl, documentsToSign } from '@/documents';
 import ConfirmationModal from '../ConfirmationModal.vue';
 
 const store = useFormStore();
@@ -83,6 +97,12 @@ const formIdToDisplay = computed(() => {
 const selectedActivitiesDetails = computed<Activity[]>(() => {
   return formData.activities;
 });
+
+// Encore renseigné quand la modale s'affiche : `store.resetForm()` n'a lieu qu'à
+// sa fermeture, ce qui permet de lui passer la liste en propriété.
+const documentsRequired = computed<Activity[]>(() =>
+  documentsToSign(selectedActivitiesDetails.value)
+);
 
 const getPrice = (activity: Activity) => activityPrice(activity, formData.ville);
 
@@ -154,6 +174,18 @@ const handleModalClose = () => {
 
 .summary-section, .payment-section {
   flex: 1;
+}
+
+.documents-notice {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #b9770e;
+  background-color: #fdf6e3;
+}
+
+.documents-notice p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
 }
 
 

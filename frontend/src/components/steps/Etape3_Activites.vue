@@ -54,6 +54,10 @@
           <div v-if="activity.location" class="activity-location">
             {{ activity.location }}
           </div>
+          <div v-if="hasDocument(activity)" class="activity-document">
+            📄 Document à remplir et signer —
+            <a :href="documentUrl(activity)" target="_blank" @click.stop>télécharger</a>
+          </div>
           <span v-if="activity.max_participants > 0"> (Places restantes: {{
               activity.max_participants - (activity.current_participants || 0)
             }})
@@ -78,6 +82,7 @@ import {useFormStore} from '@/stores/form';
 import api from '@/api';
 import type {Activity} from '@/types';
 import { activityPrice } from '@/pricing';
+import { hasDocument, documentUrl } from '@/documents';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -187,6 +192,13 @@ const getPrice = (activity: Activity) => activityPrice(activity, formData.ville)
   width: 72%;
   display: inline-block;
   padding-left: 1.5rem
+}
+
+.activity-document {
+  width: 100%;
+  padding-left: 1.5rem;
+  color: #b9770e;
+  font-size: 0.9rem;
 }
 
 
