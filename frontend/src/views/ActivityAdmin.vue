@@ -45,6 +45,15 @@
           <span v-else>—</span>
         </template>
       </Column>
+      <Column header="Doc">
+        <template #body="{ data }">
+          <a v-if="hasDocument(data)" :href="documentUrl(data)" target="_blank"
+             :title="data.document_filename">
+            <i class="pi pi-file-pdf" style="color: #c0392b;"></i>
+          </a>
+          <span v-else>—</span>
+        </template>
+      </Column>
       <Column header="Actions">
         <template #body="{ data }">
           <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="openDialog(data)" />
@@ -85,6 +94,21 @@
           <DatePicker id="registration_deadline" :modelValue="deadlineAsDate" @update:modelValue="onDeadlineChange" dateFormat="dd/mm/yy" showIcon showButtonBar />
         </div>
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label>Document à remplir et signer (PDF) :</label>
+          <div v-if="editingActivity.document_filename" style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="pi pi-file-pdf" style="color: #c0392b;"></i>
+            <a :href="documentUrl(editingActivity)" target="_blank">{{ editingActivity.document_filename }}</a>
+            <Button icon="pi pi-trash" severity="danger" text rounded size="small"
+                    type="button" @click="removeDocument" />
+          </div>
+          <input type="file" accept="application/pdf" @change="onDocumentSelected" />
+          <small v-if="documentError" style="color: #c0392b;">{{ documentError }}</small>
+          <small v-else style="color: #666;">
+            PDF de 10 Mo maximum. Pour une nouvelle activité, le document est envoyé
+            juste après l'enregistrement.
+          </small>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           <label for="day_of_week">Jour de la semaine:</label>
           <Select id="day_of_week" v-model="editingActivity.day_of_week" :options="dayOptions" optionLabel="label" optionValue="value" placeholder="— Aucun —" showClear />
         </div>
@@ -121,7 +145,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, type Ref } from 'vue';
-import api from '@/api';
+import api, { uploadActivityDocument, deleteActivityDocument } from '@/api';
+import { hasDocument, documentUrl } from '@/documents';
 import { useRouter } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
 import type { Activity } from '@/types';
@@ -171,6 +196,46 @@ const editingActivity: Ref<Activity> = ref({
 });
 const isEditing = ref(false);
 
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const pendingDocument = ref<File | null>(null);
+const documentError = ref<string | null>(null);
+
+const onDocumentSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0] ?? null;
+  documentError.value = null;
+
+  if (file && file.size > MAX_DOCUMENT_BYTES) {
+    // Contrôle de confort : le backend refuse de toute façon en 413, mais
+    // autant ne pas faire téléverser 40 Mo pour rien.
+    documentError.value = 'Le document ne doit pas dépasser 10 Mo.';
+    input.value = '';
+    pendingDocument.value = null;
+    return;
+  }
+
+  pendingDocument.value = file;
+};
+
+/** Envoie le document retenu, si l'admin en a choisi un. */
+const sendPendingDocument = async (activityId: number) => {
+  if (!pendingDocument.value) return;
+  await uploadActivityDocument(activityId, pendingDocument.value);
+  pendingDocument.value = null;
+};
+
+const removeDocument = async () => {
+  const id = editingActivity.value.id;
+  if (!id) return;
+  try {
+    await deleteActivityDocument(id);
+    editingActivity.value.document_filename = null;
+    fetchActivities();
+  } catch (err: any) {
+    alert(`Erreur lors de la suppression du document: ${err.response?.data?.detail || err.message}`);
+  }
+};
+
 const deadlineAsDate = computed<Date | null>(() => {
   if (!editingActivity.value.registration_deadline) return null;
   return new Date(editingActivity.value.registration_deadline);
@@ -219,7 +284,11 @@ const fetchActivities = async () => {
 
 const addActivity = async () => {
   try {
-    await api.post('/api/activities', editingActivity.value);
+    // Deux temps assumés : le chemin du fichier est dérivé de l'id, qui n'existe
+    // pas avant l'enregistrement. Si l'upload échoue, l'activité reste créée
+    // sans document et l'admin peut réessayer depuis l'édition.
+    const created = await api.post('/api/activities', editingActivity.value);
+    await sendPendingDocument(created.data.id);
     dialogVisible.value = false;
     resetForm();
     fetchActivities();
@@ -234,6 +303,7 @@ const addActivity = async () => {
 const updateActivity = async () => {
   try {
     await api.put(`/api/activities/${editingActivity.value.id}`, editingActivity.value);
+    await sendPendingDocument(editingActivity.value.id!);
     dialogVisible.value = false;
     resetForm();
     fetchActivities();
@@ -264,6 +334,8 @@ const resetForm = () => {
     document_filename: null,
   };
   isEditing.value = false;
+  pendingDocument.value = null;
+  documentError.value = null;
 };
 
 const deleteActivity = (id: number | null) => {

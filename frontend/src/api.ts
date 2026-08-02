@@ -84,6 +84,20 @@ export const deleteActivity = async (id: number): Promise<void> => {
     await api.delete(`/api/activities/${id}`);
 };
 
+export const uploadActivityDocument = async (id: number, file: File): Promise<Activity> => {
+    const form = new FormData();
+    form.append('file', file);
+    // Pas de `Content-Type` explicite : axios doit poser lui-même le
+    // `multipart/form-data` avec sa frontière, sinon le backend ne sait pas
+    // découper le corps.
+    const response = await api.post(`/api/activities/${id}/document`, form);
+    return response.data;
+};
+
+export const deleteActivityDocument = async (id: number): Promise<void> => {
+    await api.delete(`/api/activities/${id}/document`);
+};
+
 export const getAdhesions = async (): Promise<Adhesion[]> => {
     const response = await api.get('/api/adhesions');
     return response.data;
