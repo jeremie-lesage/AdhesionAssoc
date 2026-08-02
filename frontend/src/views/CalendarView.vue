@@ -90,21 +90,14 @@ import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import api from '@/api';
 import type { Activity } from '@/types';
+import { DAY_LABELS } from '@/schedule';
 
 const HOUR_HEIGHT = 60;
 const activities = ref<Activity[]>([]);
 const loading = ref(true);
 const filter = ref<'all' | 'adult' | 'child'>('all');
 
-const days = [
-  { label: 'Lundi', value: 0 },
-  { label: 'Mardi', value: 1 },
-  { label: 'Mercredi', value: 2 },
-  { label: 'Jeudi', value: 3 },
-  { label: 'Vendredi', value: 4 },
-  { label: 'Samedi', value: 5 },
-  { label: 'Dimanche', value: 6 },
-];
+const days = DAY_LABELS.map((label, value) => ({ label, value }));
 
 const scheduled = computed(() => {
   let r = activities.value.filter(a => a.day_of_week != null && a.start_time && a.end_time);

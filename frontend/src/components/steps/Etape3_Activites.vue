@@ -39,39 +39,50 @@
           href="https://foyerruralfauverney.fr/activites/activites-enfant/" target="_blank">notre site internet</a></p>
       <p v-else> Détails des activités sur <a href="https://foyerruralfauverney.fr/activites/activites-adulte/"
                                               target="_blank">notre site internet</a></p>
-      <div v-for="activity in filteredActivities" :key="activity.id!">
-        <label
-            :class="{ 'disabled-activity': isActivityUnavailable(activity) }">
+      <fieldset v-for="group in activityGroups" :key="group.key" class="day-group">
+        <legend v-if="group.label">{{ group.label }}</legend>
 
-          <div class="activity-info">
-            <input v-model="selectedActivityIds"
-                   :disabled="isActivityUnavailable(activity)"
-                   :value="activity.id"
-                   type="checkbox"> {{ activity.name }} <span
-              v-if="activity.description">- {{ activity.description }}</span></div>
-          <span v-if="getPrice(activity) !== null" style="font-weight: bold"> Tarif: {{ getPrice(activity) }}€</span>
-          <br/>
-          <div v-if="activity.location" class="activity-location">
-            {{ activity.location }}
+        <label v-for="activity in group.activities" :key="activity.id!"
+               :class="{ unavailable: isActivityUnavailable(activity) }"
+               class="activity-option">
+          <input v-model="selectedActivityIds"
+                 :disabled="isActivityUnavailable(activity)"
+                 :value="activity.id"
+                 class="activity-checkbox"
+                 type="checkbox">
+
+          <div class="activity-main">
+            <span class="activity-name">{{ activity.name }}</span>
+            <span v-if="activity.description" class="activity-desc">{{ activity.description }}</span>
+            <span v-if="activityContext(activity)" class="activity-context">{{ activityContext(activity) }}</span>
+            <span v-if="hasDocument(activity)" class="activity-document">
+              📄 Document à remplir et signer —
+              <a :href="documentUrl(activity)" target="_blank" @click.stop>télécharger</a>
+            </span>
           </div>
-          <div v-if="hasDocument(activity)" class="activity-document">
-            📄 Document à remplir et signer —
-            <a :href="documentUrl(activity)" target="_blank" @click.stop>télécharger</a>
+
+          <div class="activity-meta">
+            <span v-if="getPrice(activity) !== null" class="activity-price">{{ getPrice(activity) }}€</span>
+            <span v-if="isFull(activity)" class="badge badge-closed">Complet</span>
+            <span v-else-if="isDeadlinePassed(activity)" class="badge badge-closed">Inscriptions closes</span>
+            <template v-else>
+              <span v-if="activity.max_participants > 0" class="badge badge-open">
+                {{ activity.max_participants - (activity.current_participants || 0) }} place(s)
+              </span>
+              <span v-if="activity.registration_deadline" class="badge badge-deadline">
+                Avant le {{ formatDate(activity.registration_deadline) }}
+              </span>
+            </template>
           </div>
-          <span v-if="activity.max_participants > 0"> (Places restantes: {{
-              activity.max_participants - (activity.current_participants || 0)
-            }})
-          </span>
-          <span v-if="activity.max_participants > 0 && activity.current_participants >= activity.max_participants"
-                style="color: red;"> (Complet)</span>
-          <span v-else-if="isDeadlinePassed(activity)"
-                style="color: red;"> (Inscriptions closes)</span>
-          <span v-if="activity.registration_deadline && !isDeadlinePassed(activity)"
-                style="color: #666;"> (Inscription avant le {{ formatDate(activity.registration_deadline) }})</span>
         </label>
+      </fieldset>
+
+      <div class="step-actions">
+        <!-- type="button" impératif : sans lui le bouton vaut submit, donc
+             `prevStep` était immédiatement annulé par le `nextStep` du form. -->
+        <button type="button" @click="prevStep">Précédent</button>
+        <button type="submit">Suivant</button>
       </div>
-      <button @click="prevStep">Précédent</button>
-      <button type="submit">Suivant</button>
     </form>
   </div>
 </template>
@@ -83,6 +94,7 @@ import api from '@/api';
 import type {Activity} from '@/types';
 import { activityPrice } from '@/pricing';
 import { hasDocument, documentUrl } from '@/documents';
+import { formatSchedule, groupByDay } from '@/schedule';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -120,6 +132,8 @@ const filteredActivities = computed<Activity[]>(() => {
     return allActivities.value.filter((activity: Activity) => activity.is_adult_activity);
   }
 });
+
+const activityGroups = computed(() => groupByDay(filteredActivities.value));
 
 onMounted(async () => {
   try {
@@ -161,10 +175,17 @@ const isDeadlinePassed = (activity: Activity): boolean => {
   return new Date(activity.registration_deadline) < new Date(new Date().toDateString());
 };
 
+const isFull = (activity: Activity): boolean =>
+  activity.max_participants > 0 && activity.current_participants >= activity.max_participants;
+
 const isActivityUnavailable = (activity: Activity): boolean => {
-  if (activity.max_participants > 0 && activity.current_participants >= activity.max_participants) return true;
+  if (isFull(activity)) return true;
   return isDeadlinePassed(activity);
 };
+
+/** Lieu et horaire sur une seule ligne, l'un ou l'autre pouvant manquer. */
+const activityContext = (activity: Activity): string =>
+  [activity.location, formatSchedule(activity)].filter(Boolean).join(' · ');
 
 const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString('fr-FR');
@@ -174,48 +195,161 @@ const getPrice = (activity: Activity) => activityPrice(activity, formData.ville)
 </script>
 
 <style scoped>
-.disabled-activity {
+/* Groupe de jour : fieldset/legend plutôt qu'un div + titre, pour que le
+   lecteur d'écran annonce le jour en entrant dans le groupe de cases. */
+.day-group {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.day-group legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
+}
+
+/* Une activité = une carte. La grille `auto 1fr auto` fixe les trois colonnes
+   (case, contenu, méta) : leur alignement ne dépend plus de la longueur du nom,
+   ce que l'ancien empilement d'inline-block en pourcentages ne garantissait pas. */
+.activity-option {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.25rem 0.75rem;
+  align-items: start;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.activity-option:hover:not(.unavailable) {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Retour visuel de la sélection sur la carte entière, pas seulement la case. */
+.activity-option:has(input:checked) {
+  border-color: var(--color-primary);
+  background: #f0f6ff;
+}
+
+.activity-option:focus-within {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 2px;
+}
+
+.activity-checkbox {
+  margin: 0.2rem 0 0;
+}
+
+.activity-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.activity-name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.activity-desc {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.activity-context {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.activity-document {
+  font-size: 0.85rem;
+  color: #b9770e;
+}
+
+/* Colonne droite : tarif puis statuts, alignés à droite et empilés. */
+.activity-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.activity-price {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.badge-open {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-closed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.badge-deadline {
+  background: #fff8e1;
+  color: #8d6e00;
+}
+
+.unavailable {
+  background: #fafafa;
   color: #999;
   cursor: not-allowed;
 }
 
-.disabled-activity input[type="checkbox"] {
+.unavailable .activity-desc,
+.unavailable .activity-context,
+.unavailable .activity-document,
+.unavailable .activity-price {
+  color: #aaa;
+}
+
+.unavailable .activity-checkbox {
   cursor: not-allowed;
 }
 
-.activity-info {
-  width: 75%;
-  display: inline-block;
+.step-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
-.activity-location {
-  width: 72%;
-  display: inline-block;
-  padding-left: 1.5rem
-}
-
-.activity-document {
-  width: 100%;
-  padding-left: 1.5rem;
-  color: #b9770e;
-  font-size: 0.9rem;
-}
-
-
+/* Sous 768px la colonne méta n'a plus la place d'être à droite du contenu :
+   elle passe sous le texte, en ligne, alignée sur la même indentation. */
 @media (max-width: 768px) {
-  .activity-info {
-    width: 100%;
-    display: inline-block;
-    padding: 0;
-    margin: 0;
+  .activity-option {
+    grid-template-columns: auto 1fr;
   }
 
-  .activity-location {
-    width: 100%;
-    display: inline-block;
-    padding: 0;
-    margin: 0;
+  .activity-meta {
+    grid-column: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 0.35rem;
   }
 }
-
 </style>

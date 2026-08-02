@@ -147,6 +147,7 @@
 import { ref, computed, onMounted, type Ref } from 'vue';
 import api, { uploadActivityDocument, deleteActivityDocument } from '@/api';
 import { hasDocument, documentUrl } from '@/documents';
+import { DAY_LABELS } from '@/schedule';
 import { useRouter } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
 import type { Activity } from '@/types';
@@ -162,17 +163,9 @@ import DatePicker from 'primevue/datepicker';
 import Select from 'primevue/select';
 import ConfirmDialog from 'primevue/confirmdialog';
 
-const dayLabels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const dayLabels = DAY_LABELS;
 
-const dayOptions = [
-  { label: 'Lundi', value: 0 },
-  { label: 'Mardi', value: 1 },
-  { label: 'Mercredi', value: 2 },
-  { label: 'Jeudi', value: 3 },
-  { label: 'Vendredi', value: 4 },
-  { label: 'Samedi', value: 5 },
-  { label: 'Dimanche', value: 6 },
-];
+const dayOptions = DAY_LABELS.map((label, value) => ({ label, value }));
 
 const confirm = useConfirm();
 const activities = ref<Activity[]>([]);
