@@ -167,6 +167,7 @@ const editingActivity: Ref<Activity> = ref({
   day_of_week: null,
   start_time: null,
   end_time: null,
+  document_filename: null,
 });
 const isEditing = ref(false);
 
@@ -260,6 +261,7 @@ const resetForm = () => {
     day_of_week: null,
     start_time: null,
     end_time: null,
+    document_filename: null,
   };
   isEditing.value = false;
 };

@@ -13,6 +13,9 @@ export interface Activity {
   is_adult_activity: boolean;
   resident_price: number | undefined;
   external_price: number | undefined;
+  // Nom du PDF à remplir et signer, ou null si l'activité n'en exige aucun.
+  // Renseigné par le back-office ; le formulaire s'en sert comme d'un drapeau.
+  document_filename: string | null;
 }
 
 export interface Adhesion {
