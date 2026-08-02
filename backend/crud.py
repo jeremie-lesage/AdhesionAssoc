@@ -92,6 +92,7 @@ def create_adhesion(db: Session, adhesion: AdhesionInput) -> AdhesionSchema:
                 "nom": db_adhesion.nom,
                 "code": db_adhesion.code,
                 "resume_url": f"{settings.PUBLIC_URL}/adhesion?code={db_adhesion.code}",
+                "documents": _documents_context(db_adhesion.activities),
             },
         )
         db_adhesion.submission_email_sent_at = datetime.now()
@@ -114,6 +115,27 @@ def get_adhesion_by_code(db: Session, code: str) -> AdhesionSchema | None:
     return AdhesionSchema.model_validate(adhesion)
 
 
+def _documents_context(activities) -> list[dict]:
+    """Documents à remplir et signer parmi ces activités.
+
+    Une liste `{name, url}` plutôt qu'un champ ajouté aux structures d'activités
+    déjà présentes dans les contextes : l'email de validation liste des activités
+    avec leur prix, l'accusé de réception n'en liste aucune. Une clé commune
+    permet un bloc de template identique dans les deux fichiers.
+
+    L'URL est absolue : elle est cliquée depuis un client mail, hors de tout
+    contexte de navigation.
+    """
+    return [
+        {
+            "name": activity.name,
+            "url": f"{settings.PUBLIC_URL}/api/activities/{activity.id}/document",
+        }
+        for activity in activities
+        if activity.document_filename
+    ]
+
+
 def _validation_email_body(adhesion: Adhesion) -> dict:
     total_cost = adhesion.adhesion_amount or 0
     activities_details = []
@@ -130,6 +152,7 @@ def _validation_email_body(adhesion: Adhesion) -> dict:
         "adhesion_amount": adhesion.adhesion_amount,
         "activities": activities_details,
         "total_cost": total_cost,
+        "documents": _documents_context(adhesion.activities),
     }
 
 

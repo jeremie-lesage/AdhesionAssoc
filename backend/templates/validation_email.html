@@ -42,6 +42,20 @@
         </tbody>
     </table>
 
+    {% if documents %}
+    <h2>Documents à imprimer et signer</h2>
+    <p>
+        Certaines de vos activités demandent un formulaire complété et signé.
+        Merci de l'imprimer, de le remplir et de le remettre au responsable de
+        l'activité lors de la première séance.
+    </p>
+    <ul>
+        {% for document in documents %}
+        <li><a href="{{ document.url }}">{{ document.name }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
     <p>Merci de votre confiance.</p>
     <p>L'équipe du Foyer Rural de Fauverney</p>
 </body>

@@ -18,6 +18,7 @@ SUBMISSION_CONTEXT = {
     "nom": "Dupont",
     "code": "ABC123XYZ789",
     "resume_url": "https://exemple.fr/adhesion?code=ABC123XYZ789",
+    "documents": [],
 }
 
 
@@ -54,6 +55,7 @@ VALIDATION_CONTEXT = {
     "adhesion_amount": 15.0,
     "activities": [{"name": "Yoga", "price": 100.0}],
     "total_cost": 115.0,
+    "documents": [],
 }
 
 
@@ -130,8 +132,68 @@ class TestValidationTemplate:
                     {"name": "Judo", "price": 80.0},
                 ],
                 "total_cost": 195.0,
+                "documents": [],
             },
         )
 
         assert "Activité : Yoga" in html
         assert "Activité : Judo" in html
+
+
+DOCUMENT = {"name": "Gym", "url": "https://exemple.fr/api/activities/1/document"}
+
+
+class TestDocumentsSection:
+    """Le bloc « Documents à imprimer et signer », dans les deux emails.
+
+    Des liens et non des pièces jointes : pas de limite de taille Brevo, pas de
+    pénalité anti-spam, et le lien sert toujours la dernière version du document.
+    """
+
+    def test_the_validation_email_links_each_document(self):
+        html = render_template(
+            "validation_email.html", {**VALIDATION_CONTEXT, "documents": [DOCUMENT]}
+        )
+
+        assert f'href="{DOCUMENT["url"]}"' in html
+        assert "Documents à imprimer et signer" in html
+
+    def test_the_submission_email_links_each_document(self):
+        html = render_template(
+            "submission_email.html", {**SUBMISSION_CONTEXT, "documents": [DOCUMENT]}
+        )
+
+        assert f'href="{DOCUMENT["url"]}"' in html
+        assert "Documents à imprimer et signer" in html
+
+    def test_the_section_is_absent_without_documents(self):
+        """Une adhésion sans activité à document ne doit pas voir un titre vide."""
+        validation = render_template("validation_email.html", VALIDATION_CONTEXT)
+        submission = render_template("submission_email.html", SUBMISSION_CONTEXT)
+
+        assert "Documents à imprimer et signer" not in validation
+        assert "Documents à imprimer et signer" not in submission
+
+    def test_a_missing_documents_key_is_an_email_failure(self):
+        """`StrictUndefined` : un contexte incomplet échoue au lieu de tronquer.
+
+        Garde-fou sur les deux constructions de contexte de `crud` — si l'une
+        oublie la clé, l'envoi lève plutôt que d'omettre silencieusement les
+        documents dont l'adhérent a besoin.
+        """
+        incomplete = {k: v for k, v in VALIDATION_CONTEXT.items() if k != "documents"}
+
+        with pytest.raises(EmailSendError, match="documents"):
+            render_template("validation_email.html", incomplete)
+
+    def test_a_document_name_containing_html_is_escaped(self):
+        html = render_template(
+            "validation_email.html",
+            {
+                **VALIDATION_CONTEXT,
+                "documents": [{**DOCUMENT, "name": '<img src=x onerror="alert(1)">'}],
+            },
+        )
+
+        assert "<img" not in html
+        assert 'onerror="alert(1)"' not in html

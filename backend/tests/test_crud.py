@@ -443,3 +443,75 @@ class TestDashboardAgeSplit:
 
         assert stats.children == 0
         assert stats.adults == 2
+
+
+# ─── Documents à remplir et signer ───────────────────────────────
+
+
+def _make_activity_with_document(db_session, name="Gym douce", filename="reglement.pdf"):
+    """`_make_activity` ne connaît pas le champ : on le pose après création."""
+    activity = _make_activity(db_session, name=name)
+    activity.document_filename = filename
+    db_session.commit()
+    db_session.refresh(activity)
+    return activity
+
+
+def _stored_adhesion(db_session, code):
+    """Le modèle `Adhesion`, là où `_make_adhesion` renvoie un `AdhesionSchema`.
+
+    `_validation_email_body` lit `adhesion.activities`, une relation ORM absente
+    du schéma.
+    """
+    return db_session.query(Adhesion).filter(Adhesion.code == code).first()
+
+
+class TestDocumentsInEmails:
+    """Les emails annoncent les documents à remplir et signer."""
+
+    def test_validation_email_lists_documents(self, db_session):
+        activity = _make_activity_with_document(db_session)
+        adhesion = _make_adhesion(db_session, activities=[activity.id])
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert body["documents"] == [
+            {
+                "name": "Gym douce",
+                "url": f"{crud.settings.PUBLIC_URL}/api/activities/{activity.id}/document",
+            }
+        ]
+
+    def test_documents_key_is_always_present(self, db_session):
+        # Les templates tournent en `StrictUndefined` : une clé absente lève à
+        # l'envoi. Une adhésion sans document doit donc porter une liste vide.
+        adhesion = _make_adhesion(db_session)
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert body["documents"] == []
+
+    def test_only_activities_with_a_document_are_listed(self, db_session):
+        with_doc = _make_activity_with_document(db_session, name="Gym")
+        without_doc = _make_activity(db_session, name="Danse")
+
+        context = crud._documents_context([with_doc, without_doc])
+
+        assert [d["name"] for d in context] == ["Gym"]
+
+    def test_submission_email_carries_the_documents(self, db_session, submission_emails):
+        activity = _make_activity_with_document(db_session, name="Gym")
+
+        _make_adhesion(db_session, activities=[activity.id])
+
+        assert len(submission_emails) == 1
+        assert submission_emails[0]["body"]["documents"] == [
+            {
+                "name": "Gym",
+                "url": f"{crud.settings.PUBLIC_URL}/api/activities/{activity.id}/document",
+            }
+        ]
+
+
+# Le rendu Jinja2 du bloc « Documents à imprimer et signer » est testé dans
+# tests/test_email_service.py, avec les autres tests de templates.
