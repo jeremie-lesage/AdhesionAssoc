@@ -51,6 +51,14 @@
 
     <ConfirmationModal :visible="isModalVisible" :form-id="formIdToDisplay"
                        :documents="documentsRequired" @close="handleModalClose" />
+
+    <MessageModal
+      :message="errorModal.message"
+      :title="errorModal.title"
+      :variant="errorModal.variant"
+      :visible="errorModal.visible"
+      @close="errorModal.visible = false"
+    />
   </div>
 
 </template>
@@ -64,6 +72,7 @@ import type {Activity} from '@/types';
 import { activitiesCost, activityPrice } from '@/pricing';
 import { documentUrl, documentsToSign } from '@/documents';
 import ConfirmationModal from '../ConfirmationModal.vue';
+import MessageModal from '../MessageModal.vue';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -71,6 +80,17 @@ const router = useRouter();
 
 const allActivities = ref<Activity[]>([]);
 const isModalVisible = ref(false);
+
+const errorModal = ref<{
+  visible: boolean;
+  title: string;
+  message: string;
+  variant: 'info' | 'warning' | 'error';
+}>({ visible: false, title: '', message: '', variant: 'error' });
+
+const showError = (title: string, message: string, variant: 'warning' | 'error' = 'error') => {
+  errorModal.value = { visible: true, title, message, variant };
+};
 const iban = ref('');
 const bic = ref('');
 const bank = ref('');
@@ -121,7 +141,12 @@ const prevStep = () => {
 
 const submitForm = async () => {
   if (store.formData.status === 'validated') {
-    alert('Ce formulaire a déjà été validé et ne peut plus être modifié.');
+    showError(
+      'Inscription déjà validée',
+      'Ce formulaire a déjà été validé et ne peut plus être modifié.\n'
+        + 'Pour toute correction, contactez un responsable du Foyer Rural.',
+      'warning'
+    );
     return;
   }
 
@@ -148,7 +173,11 @@ const submitForm = async () => {
     isModalVisible.value = true;
   } catch (error) {
     console.error(error);
-    alert('Une erreur est survenue lors de la validation du formulaire.');
+    showError(
+      'Envoi impossible',
+      "Une erreur est survenue lors de la validation du formulaire.\n"
+        + 'Vos réponses sont conservées : réessayez dans un instant.'
+    );
   }
 };
 
