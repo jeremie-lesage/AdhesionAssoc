@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import NewAdhesionForm from '../views/NewAdhesionForm.vue'
 import LoadForm from '../views/LoadForm.vue'
-import ConfirmationPage from '../views/ConfirmationPage.vue'
 import AdminLogin from '../views/AdminLogin.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 
@@ -28,11 +27,6 @@ const router = createRouter({
       path: '/load',
       name: 'load',
       component: LoadForm
-    },
-    {
-      path: '/confirmation',
-      name: 'confirmation',
-      component: ConfirmationPage
     },
     {
       path: '/admin/login',

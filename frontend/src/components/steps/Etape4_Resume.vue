@@ -71,7 +71,6 @@ const router = useRouter();
 
 const allActivities = ref<Activity[]>([]);
 const isModalVisible = ref(false);
-const isUpdate = ref(false);
 const iban = ref('');
 const bic = ref('');
 const bank = ref('');
@@ -135,7 +134,6 @@ const submitForm = async () => {
   try {
     if (store.formData.code) {
       await api.put(`/api/adhesions/${store.formData.code}`, payload);
-      isUpdate.value = true;
     } else {
       const response = await api.post('/api/adhesions', payload);
       const newCode = response.data.code;
@@ -154,14 +152,12 @@ const submitForm = async () => {
   }
 };
 
+// La modale de confirmation porte déjà le code d'accès et les documents à signer :
+// retour direct à l'accueil, création comme modification.
 const handleModalClose = () => {
   isModalVisible.value = false;
   store.resetForm();
-  if (isUpdate.value) {
-    router.push('/');
-  } else {
-    router.push('/confirmation');
-  }
+  router.push('/');
 };
 </script>
 
