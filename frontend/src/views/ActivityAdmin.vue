@@ -150,6 +150,8 @@ import { hasDocument, documentUrl } from '@/documents';
 import { DAY_LABELS } from '@/schedule';
 import { useRouter } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import axios from 'axios';
 import type { Activity } from '@/types';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -168,7 +170,18 @@ const dayLabels = DAY_LABELS;
 const dayOptions = DAY_LABELS.map((label, value) => ({ label, value }));
 
 const confirm = useConfirm();
+const toast = useToast();
 const activities = ref<Activity[]>([]);
+
+/** Le détail renvoyé par l'API est plus parlant que le message axios générique. */
+const notifyError = (summary: string, err: unknown) => {
+  const detail = axios.isAxiosError(err)
+    ? err.response?.data?.detail || err.message
+    : err instanceof Error
+      ? err.message
+      : String(err);
+  toast.add({ severity: 'error', summary, detail, life: 8000 });
+};
 const dialogVisible = ref(false);
 const editingActivity: Ref<Activity> = ref({
   id: null,
@@ -224,8 +237,8 @@ const removeDocument = async () => {
     await deleteActivityDocument(id);
     editingActivity.value.document_filename = null;
     fetchActivities();
-  } catch (err: any) {
-    alert(`Erreur lors de la suppression du document: ${err.response?.data?.detail || err.message}`);
+  } catch (err) {
+    notifyError('Suppression du document impossible', err);
   }
 };
 
@@ -285,9 +298,9 @@ const addActivity = async () => {
     dialogVisible.value = false;
     resetForm();
     fetchActivities();
-  } catch (err: any) {
-    alert(`Erreur lors de l'ajout de l'activité: ${err.response?.data?.detail || err.message}`);
-    if (err.response && err.response.status === 401) {
+  } catch (err) {
+    notifyError("Ajout de l'activité impossible", err);
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
       router.push({ name: 'admin-login' });
     }
   }
@@ -300,9 +313,9 @@ const updateActivity = async () => {
     dialogVisible.value = false;
     resetForm();
     fetchActivities();
-  } catch (err: any) {
-    alert(`Erreur lors de la mise à jour de l'activité: ${err.response?.data?.detail || err.message}`);
-    if (err.response && err.response.status === 401) {
+  } catch (err) {
+    notifyError("Mise à jour de l'activité impossible", err);
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
       router.push({ name: 'admin-login' });
     }
   }
@@ -343,9 +356,9 @@ const deleteActivity = (id: number | null) => {
       try {
         await api.delete(`/api/activities/${id}`);
         fetchActivities();
-      } catch (err: any) {
-        alert(`Erreur lors de la suppression de l'activité: ${err.response?.data?.detail || err.message}`);
-        if (err.response && err.response.status === 401) {
+      } catch (err) {
+        notifyError("Suppression de l'activité impossible", err);
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
           router.push({ name: 'admin-login' });
         }
       }

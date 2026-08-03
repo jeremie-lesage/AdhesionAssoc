@@ -36,6 +36,9 @@
     <main class="admin-content">
       <router-view />
     </main>
+    <!-- Monté une seule fois ici : toutes les vues admin partagent la même pile
+         de notifications, il n'y a pas de <Toast /> à répéter par page. -->
+    <Toast />
   </div>
 </template>
 
@@ -43,6 +46,7 @@
 import { ref } from 'vue';
 import { RouterLink, useRouter, useRoute } from 'vue-router';
 import Button from 'primevue/button';
+import Toast from 'primevue/toast';
 
 const router = useRouter();
 const route = useRoute();

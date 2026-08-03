@@ -47,6 +47,7 @@ import { ref, onMounted } from 'vue';
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin as apiDeleteAdmin } from '@/api';
 import type { AdminUser, AdminUserCreate } from '@/types';
 import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -56,7 +57,12 @@ import Password from 'primevue/password';
 import ConfirmDialog from 'primevue/confirmdialog';
 
 const confirm = useConfirm();
+const toast = useToast();
 const admins = ref<AdminUser[]>([]);
+
+const notifyError = (detail: string) => {
+  toast.add({ severity: 'error', summary: 'Erreur', detail, life: 6000 });
+};
 const showModal = ref(false);
 const editingAdmin = ref<AdminUser | null>(null);
 const form = ref<AdminUserCreate>({
@@ -73,7 +79,7 @@ async function fetchAdmins() {
     admins.value = await getAdmins();
   } catch (error) {
     console.error("Erreur lors de la récupération des administrateurs:", error);
-    alert("Impossible de charger les administrateurs.");
+    notifyError("Impossible de charger les administrateurs.");
   }
 }
 
@@ -95,7 +101,7 @@ async function saveAdmin() {
     cancel();
   } catch (error) {
     console.error("Erreur lors de l'enregistrement de l'administrateur:", error);
-    alert("Erreur lors de l'enregistrement.");
+    notifyError("Erreur lors de l'enregistrement du compte.");
   }
 }
 
@@ -113,7 +119,7 @@ function confirmDelete(id: number) {
         await fetchAdmins();
       } catch (error) {
         console.error("Erreur lors de la suppression de l'administrateur:", error);
-        alert("Erreur lors de la suppression.");
+        notifyError("Erreur lors de la suppression du compte.");
       }
     },
   });
