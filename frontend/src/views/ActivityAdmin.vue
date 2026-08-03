@@ -148,10 +148,10 @@ import { ref, computed, onMounted, type Ref } from 'vue';
 import api, { uploadActivityDocument, deleteActivityDocument } from '@/api';
 import { hasDocument, documentUrl } from '@/documents';
 import { DAY_LABELS } from '@/schedule';
+import { errorDetail, isUnauthorized } from '@/errors';
 import { useRouter } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import axios from 'axios';
 import type { Activity } from '@/types';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -173,14 +173,8 @@ const confirm = useConfirm();
 const toast = useToast();
 const activities = ref<Activity[]>([]);
 
-/** Le détail renvoyé par l'API est plus parlant que le message axios générique. */
 const notifyError = (summary: string, err: unknown) => {
-  const detail = axios.isAxiosError(err)
-    ? err.response?.data?.detail || err.message
-    : err instanceof Error
-      ? err.message
-      : String(err);
-  toast.add({ severity: 'error', summary, detail, life: 8000 });
+  toast.add({ severity: 'error', summary, detail: errorDetail(err), life: 8000 });
 };
 const dialogVisible = ref(false);
 const editingActivity: Ref<Activity> = ref({
@@ -258,7 +252,7 @@ const onDeadlineChange = (value: Date | Date[] | (Date | null)[] | null | undefi
 };
 
 const loading = ref(true);
-const error = ref(null);
+const error = ref<string | null>(null);
 const router = useRouter();
 
 const openDialog = (activity?: Activity) => {
@@ -277,11 +271,11 @@ const fetchActivities = async () => {
   try {
     const response = await api.get('/api/activities');
     activities.value = response.data;
-  } catch (err: any) {
-    if (err.response && err.response.status === 401) {
+  } catch (err) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     } else {
-      error.value = err.message;
+      error.value = errorDetail(err, 'Impossible de charger les activités.');
     }
   } finally {
     loading.value = false;
@@ -300,7 +294,7 @@ const addActivity = async () => {
     fetchActivities();
   } catch (err) {
     notifyError("Ajout de l'activité impossible", err);
-    if (axios.isAxiosError(err) && err.response?.status === 401) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     }
   }
@@ -315,7 +309,7 @@ const updateActivity = async () => {
     fetchActivities();
   } catch (err) {
     notifyError("Mise à jour de l'activité impossible", err);
-    if (axios.isAxiosError(err) && err.response?.status === 401) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     }
   }
@@ -358,7 +352,7 @@ const deleteActivity = (id: number | null) => {
         fetchActivities();
       } catch (err) {
         notifyError("Suppression de l'activité impossible", err);
-        if (axios.isAxiosError(err) && err.response?.status === 401) {
+        if (isUnauthorized(err)) {
           router.push({ name: 'admin-login' });
         }
       }

@@ -94,6 +94,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
+import { isUnauthorized } from '@/errors';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -144,8 +145,8 @@ onMounted(async () => {
   try {
     const res = await api.get('/api/admin/stats');
     stats.value = res.data;
-  } catch (err: any) {
-    if (err.response?.status === 401) {
+  } catch (err) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     }
   } finally {

@@ -27,6 +27,7 @@
 import { ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { login as apiLogin } from '@/api';
+import { errorDetail } from '@/errors';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
@@ -47,9 +48,9 @@ const login = async () => {
       password: password.value,
     });
     router.push('/admin');
-  } catch (err: any) {
+  } catch (err) {
     console.error("Login error:", err);
-    error.value = err.response?.data?.detail || 'Erreur de connexion.';
+    error.value = errorDetail(err, 'Erreur de connexion.');
   } finally {
     loading.value = false;
   }

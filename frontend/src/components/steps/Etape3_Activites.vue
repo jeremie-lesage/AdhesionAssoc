@@ -102,6 +102,7 @@ import type {Activity} from '@/types';
 import { activityPrice } from '@/pricing';
 import { hasDocument, documentUrl } from '@/documents';
 import { formatSchedule, groupByDay } from '@/schedule';
+import { errorDetail } from '@/errors';
 import MessageModal from '../MessageModal.vue';
 
 const store = useFormStore();
@@ -154,8 +155,8 @@ onMounted(async () => {
     if (formData.activities && Array.isArray(formData.activities)) {
       selectedActivityIds.value = formData.activities.map(activity => activity.id).filter(id => id !== null) as number[];
     }
-  } catch (err: any) {
-    activitiesError.value = err.message;
+  } catch (err) {
+    activitiesError.value = errorDetail(err, 'Impossible de charger les activités.');
   } finally {
     loadingActivities.value = false;
   }

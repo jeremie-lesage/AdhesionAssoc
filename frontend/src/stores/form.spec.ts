@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useFormStore } from './form'
+import type { Activity } from '@/types'
+
+/**
+ * Seul l'`id` compte pour ces tests : les fusionner avec une activité complète
+ * n'ajouterait rien et masquerait ce qui est vérifié.
+ */
+const activity = (id: number) => ({ id }) as Activity
 
 describe('useFormStore', () => {
   beforeEach(() => {
@@ -43,9 +50,9 @@ describe('useFormStore', () => {
 
     it('remplace la liste d’activités au lieu de la fusionner', () => {
       const store = useFormStore()
-      store.setFormData({ activities: [{ id: 1 }, { id: 2 }] })
+      store.setFormData({ activities: [activity(1), activity(2)] })
 
-      store.setFormData({ activities: [{ id: 3 }] })
+      store.setFormData({ activities: [activity(3)] })
 
       expect(store.formData.activities).toEqual([{ id: 3 }])
     })

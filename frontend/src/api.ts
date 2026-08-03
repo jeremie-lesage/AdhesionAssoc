@@ -31,7 +31,12 @@ api.interceptors.response.use(
   }
 );
 
-export const login = async (credentials: any) => {
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export const login = async (credentials: LoginCredentials) => {
   const params = new URLSearchParams();
   params.append('username', credentials.username);
   params.append('password', credentials.password);

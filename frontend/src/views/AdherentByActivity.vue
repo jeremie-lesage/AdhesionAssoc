@@ -53,6 +53,7 @@ import JSZip from 'jszip';
 import api from '@/api';
 import { useRouter } from 'vue-router';
 import type { Activity, Adhesion } from '@/types';
+import { isUnauthorized } from '@/errors';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
@@ -99,8 +100,8 @@ const fetchAdherents = async (activityId: number) => {
   try {
     const res = await api.get(`/api/activities/${activityId}/adherents`);
     adherents.value = res.data;
-  } catch (err: any) {
-    if (err.response?.status === 401) {
+  } catch (err) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     }
     adherents.value = [];
@@ -162,8 +163,8 @@ onMounted(async () => {
       activeTab.value = String(activities.value[0].id);
       fetchAdherents(activities.value[0].id!);
     }
-  } catch (err: any) {
-    if (err.response?.status === 401) {
+  } catch (err) {
+    if (isUnauthorized(err)) {
       router.push({ name: 'admin-login' });
     }
   } finally {
