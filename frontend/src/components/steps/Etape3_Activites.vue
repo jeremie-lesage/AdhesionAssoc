@@ -84,6 +84,13 @@
         <button type="submit">Suivant</button>
       </div>
     </form>
+    <MessageModal
+      :visible="isAdhesionWarningVisible"
+      message="Sélectionnez le montant de l'adhésion avant de continuer : elle est obligatoire pour toute inscription, même sans activité."
+      title="Adhésion obligatoire"
+      variant="warning"
+      @close="isAdhesionWarningVisible = false"
+    />
   </div>
 </template>
 
@@ -95,6 +102,7 @@ import type {Activity} from '@/types';
 import { activityPrice } from '@/pricing';
 import { hasDocument, documentUrl } from '@/documents';
 import { formatSchedule, groupByDay } from '@/schedule';
+import MessageModal from '../MessageModal.vue';
 
 const store = useFormStore();
 const formData = store.formData;
@@ -103,6 +111,7 @@ const allActivities = ref<Activity[]>([]);
 const loadingActivities = ref(true);
 const activitiesError = ref<string | null>(null);
 const selectedActivityIds = ref<number[]>([]);
+const isAdhesionWarningVisible = ref(false);
 
 const adherentAge = computed<number>(() => {
   if (!formData.date_naissance) return 0;
@@ -158,7 +167,7 @@ const updateStore = () => {
 
 const nextStep = () => {
   if (!formData.adhesion_amount) {
-    alert("L'adhésion est obligatoire pour toute inscription.");
+    isAdhesionWarningVisible.value = true;
     return;
   }
   updateStore(); // Commit changes to the store
