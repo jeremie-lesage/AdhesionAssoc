@@ -515,3 +515,68 @@ class TestDocumentsInEmails:
 
 # Le rendu Jinja2 du bloc « Documents à imprimer et signer » est testé dans
 # tests/test_email_service.py, avec les autres tests de templates.
+
+
+# ─── Modalités de règlement dans l'email de validation ───────────
+
+
+class TestPaymentInValidationEmail:
+    """L'email de confirmation rappelle comment régler le montant annoncé.
+
+    Sans ce bloc, l'adhérent recevait un total à payer sans RIB ni découpage des
+    chèques : l'information n'existait qu'à l'étape 4 du formulaire, page qu'il
+    ne peut plus rouvrir une fois l'adhésion validée.
+    """
+
+    def test_the_total_and_its_half_are_offered(self, db_session):
+        activity = _make_activity(db_session, resident_price=100)
+        adhesion = _make_adhesion(db_session, activities=[activity.id])
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert body["payment"]["total"] == "100"
+        assert body["payment"]["half"] == "50"
+
+    def test_an_odd_total_splits_into_decimal_cheques(self, db_session):
+        """35 € en deux chèques, c'est 17,50 € — virgule française, pas 17.5."""
+        activity = _make_activity(db_session, resident_price=35)
+        adhesion = _make_adhesion(db_session, activities=[activity.id])
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert body["payment"]["total"] == "35"
+        assert body["payment"]["half"] == "17,50"
+
+    def test_the_bank_details_come_from_the_settings(self, db_session, monkeypatch):
+        # `config.settings` est instancié à l'import : patcher l'attribut, pas
+        # la variable d'environnement.
+        monkeypatch.setattr(crud.settings, "IBAN", "FR76 1234")
+        monkeypatch.setattr(crud.settings, "BIC", "TESTFRPP")
+        monkeypatch.setattr(crud.settings, "BANK", "Banque de test")
+        adhesion = _make_adhesion(db_session)
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert body["payment"]["iban"] == "FR76 1234"
+        assert body["payment"]["bic"] == "TESTFRPP"
+        assert body["payment"]["bank"] == "Banque de test"
+
+    def test_no_payment_block_once_the_adhesion_is_paid(self, db_session):
+        """Le renvoi de l'email est possible sur une adhésion déjà encaissée."""
+        adhesion = _make_adhesion(db_session)
+        stored = _stored_adhesion(db_session, adhesion.code)
+        stored.status = "paid"
+        db_session.commit()
+
+        body = crud._validation_email_body(stored)
+
+        assert body["payment"] is None
+
+    def test_the_key_is_always_present(self, db_session):
+        # Même garde-fou que `documents` : `StrictUndefined` lève à l'envoi si la
+        # clé manque, y compris quand le bloc ne doit pas s'afficher.
+        adhesion = _make_adhesion(db_session)
+
+        body = crud._validation_email_body(_stored_adhesion(db_session, adhesion.code))
+
+        assert "payment" in body

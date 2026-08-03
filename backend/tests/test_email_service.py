@@ -48,6 +48,14 @@ class TestSubmissionTemplate:
         assert f'href="{SUBMISSION_CONTEXT["resume_url"]}"' in html
 
 
+PAYMENT = {
+    "total": "115",
+    "half": "57,50",
+    "bank": "Crédit Exemple",
+    "iban": "FR76 0000 0000 0000 0000 0000 000",
+    "bic": "EXMPFRPP",
+}
+
 VALIDATION_CONTEXT = {
     "prenom": "Jean",
     "nom": "Dupont",
@@ -56,6 +64,7 @@ VALIDATION_CONTEXT = {
     "activities": [{"name": "Yoga", "price": 100.0}],
     "total_cost": 115.0,
     "documents": [],
+    "payment": PAYMENT,
 }
 
 
@@ -133,11 +142,54 @@ class TestValidationTemplate:
                 ],
                 "total_cost": 195.0,
                 "documents": [],
+                "payment": PAYMENT,
             },
         )
 
         assert "Activité : Yoga" in html
         assert "Activité : Judo" in html
+
+
+class TestPaymentSection:
+    """Le bloc « Comment régler », dans l'email de validation seulement.
+
+    L'accusé de réception annonce que la demande doit d'abord être examinée par
+    le bureau : y mettre le RIB inviterait à payer avant validation.
+    """
+
+    def test_the_bank_details_are_present(self):
+        html = render_template("validation_email.html", VALIDATION_CONTEXT)
+
+        assert PAYMENT["bank"] in html
+        assert PAYMENT["iban"] in html
+        assert PAYMENT["bic"] in html
+
+    def test_both_cheque_options_are_offered(self):
+        html = render_template("validation_email.html", VALIDATION_CONTEXT)
+
+        assert "1 chèque de 115 €" in html
+        assert "2 chèques de 57,50 €" in html
+
+    def test_the_section_is_absent_once_paid(self):
+        """`payment` vaut None sur une adhésion encaissée : rappeler comment payer
+        à quelqu'un qui a déjà réglé n'a pas de sens."""
+        html = render_template(
+            "validation_email.html", {**VALIDATION_CONTEXT, "payment": None}
+        )
+
+        assert "Comment régler" not in html
+        assert PAYMENT["iban"] not in html
+
+    def test_a_missing_payment_key_is_an_email_failure(self):
+        incomplete = {k: v for k, v in VALIDATION_CONTEXT.items() if k != "payment"}
+
+        with pytest.raises(EmailSendError, match="payment"):
+            render_template("validation_email.html", incomplete)
+
+    def test_the_submission_email_carries_no_bank_details(self):
+        html = render_template("submission_email.html", SUBMISSION_CONTEXT)
+
+        assert "IBAN" not in html
 
 
 DOCUMENT = {"name": "Gym", "url": "https://exemple.fr/api/activities/1/document"}

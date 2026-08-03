@@ -9,6 +9,7 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .total { font-weight: bold; }
+        .encadre { border: 1px solid #ddd; background-color: #f7f7f7; padding: 12px; margin: 16px 0; font-family: monospace; }
     </style>
 </head>
 <body>
@@ -41,6 +42,24 @@
             </tr>
         </tbody>
     </table>
+
+    {% if payment %}
+    <h2>Comment régler {{ payment.total }} €</h2>
+
+    <h3>Par chèque</h3>
+    <ul>
+        <li>Soit 1 chèque de {{ payment.total }} € (encaissement en octobre)</li>
+        <li>Soit 2 chèques de {{ payment.half }} € (encaissements en octobre et février)</li>
+    </ul>
+
+    <h3>Par virement</h3>
+    <div class="encadre">
+        {{ payment.bank }}<br>
+        IBAN : {{ payment.iban }}<br>
+        BIC : {{ payment.bic }}
+    </div>
+    <p><strong>Pensez à indiquer le nom de l'adhérent dans l'objet du virement.</strong></p>
+    {% endif %}
 
     {% if documents %}
     <h2>Documents à imprimer et signer</h2>

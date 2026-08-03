@@ -136,6 +136,38 @@ def _documents_context(activities) -> list[dict]:
     ]
 
 
+def _euros(amount: float) -> str:
+    """Montant en euros à la française : virgule décimale, entiers sans décimales.
+
+    Un chèque se libelle « 17,50 € », pas « 17.5 € ». La moitié d'un total entier
+    tombe toujours sur .0 ou .5, donc deux décimales suffisent.
+    """
+    if amount == int(amount):
+        return str(int(amount))
+    return f"{amount:.2f}".replace(".", ",")
+
+
+def _payment_context(adhesion: Adhesion, total_cost: float) -> dict | None:
+    """Modalités de règlement, ou `None` si l'adhésion est déjà encaissée.
+
+    Le renvoi d'un email de confirmation est possible à tout moment, y compris sur
+    une adhésion `paid` : lui rappeler comment payer serait au mieux inutile.
+
+    Le découpage des chèques reprend celui affiché à l'étape 4 du formulaire
+    (`Etape4_Resume.vue`) — même dette que la règle de tarification : le libellé
+    est écrit deux fois, à garder synchronisé à la main.
+    """
+    if adhesion.status == "paid":
+        return None
+    return {
+        "total": _euros(total_cost),
+        "half": _euros(total_cost / 2),
+        "bank": settings.BANK,
+        "iban": settings.IBAN,
+        "bic": settings.BIC,
+    }
+
+
 def _validation_email_body(adhesion: Adhesion) -> dict:
     total_cost = adhesion.adhesion_amount or 0
     activities_details = []
@@ -153,6 +185,7 @@ def _validation_email_body(adhesion: Adhesion) -> dict:
         "activities": activities_details,
         "total_cost": total_cost,
         "documents": _documents_context(adhesion.activities),
+        "payment": _payment_context(adhesion, total_cost),
     }
 
 
