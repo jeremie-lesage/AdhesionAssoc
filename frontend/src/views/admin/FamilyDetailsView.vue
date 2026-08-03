@@ -19,9 +19,20 @@
               <Tag :value="data.status" :severity="getStatusSeverity(data.status)" />
             </template>
           </Column>
+          <Column header="Actions">
+            <template #body="{ data }">
+              <Button
+                label="Voir l'adhésion"
+                icon="pi pi-eye"
+                size="small"
+                as="router-link"
+                :to="{ name: 'admin-adhesion-detail', params: { code: data.code } }"
+              />
+            </template>
+          </Column>
         </DataTable>
         <h3>Montant total dû</h3>
-        <p>{{ familyDetails.total_due }} €</p>
+        <p class="total-due">{{ familyDetails.total_due }} €</p>
       </template>
       <template #footer>
         <Button
@@ -77,3 +88,15 @@ const getStatusSeverity = (status: string) => {
   }
 };
 </script>
+
+<style scoped>
+/* `main.css` centre les titres h1/h2/h3 mais pas les paragraphes, qui héritent
+   du `text-align: left` de `#app` : sans cette règle le montant est décalé à
+   gauche sous son titre centré. */
+.total-due {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+</style>
