@@ -18,6 +18,13 @@
         </li>
       </ul>
     </div>
+    <MessageModal
+      :visible="modal.visible"
+      :title="modal.title"
+      :message="modal.message"
+      :variant="modal.variant"
+      @close="modal.visible = false"
+    />
   </div>
 </template>
 
@@ -26,10 +33,22 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from "@/api.ts";
 import type { Adhesion } from '@/types';
+import MessageModal from '@/components/MessageModal.vue';
 
 const router = useRouter();
 const code = ref('');
 const recentAdhesions = ref<{ code: string; nom: string; prenom: string }[]>([]);
+
+const modal = ref<{
+  visible: boolean;
+  title: string;
+  message: string;
+  variant: 'info' | 'warning' | 'error';
+}>({ visible: false, title: '', message: '', variant: 'info' });
+
+const showModal = (title: string, message: string, variant: 'info' | 'warning' | 'error') => {
+  modal.value = { visible: true, title, message, variant };
+};
 
 onMounted(async () => {
   const codesJson = localStorage.getItem('recentCodes');
@@ -63,13 +82,22 @@ const loadForm = async () => {
   try {
     const response = await api.get(`/api/adhesions/${code.value}`);
     if (response.data.status === 'validated' || response.data.status === 'paid') {
-      alert('Ce formulaire a déjà été finalisé et ne peut plus être modifié.');
+      showModal(
+        'Inscription déjà finalisée',
+        'Ce formulaire a déjà été finalisé et ne peut plus être modifié.\n'
+          + 'Pour toute correction, contactez un responsable du Foyer Rural.',
+        'warning'
+      );
       return;
     }
     router.push({ name: 'adhesion', query: { code: code.value } });
   } catch (error) {
     console.error(error);
-    alert('Code invalide ou formulaire non trouvé.');
+    showModal(
+      'Code introuvable',
+      'Code invalide ou formulaire non trouvé.\nVérifiez le code reçu par email.',
+      'error'
+    );
   }
 };
 </script>
