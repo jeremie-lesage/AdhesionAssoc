@@ -508,6 +508,34 @@ def get_family_details_by_email(db: Session, email: str) -> FamilyDetails | None
     )
 
 
+def _age_in_years(date_naissance: str | None, today: date | None = None) -> int | None:
+    """Âge en années révolues, ou `None` si la date est inutilisable.
+
+    Comparaison de dates civiles, et non `(now - birth).days // 365` : cette
+    division gagnait un jour tous les quatre ans, ce qui faisait basculer un
+    adhérent « adulte » jusqu'à plusieurs jours avant son anniversaire — et
+    contredisait le badge « Adhésion Enfant / Adulte » du formulaire.
+
+    Doit rester aligné sur `frontend/src/age.ts` (`ageAt`) : mêmes rejets, même
+    borne incluse côté adulte.
+    """
+    if not date_naissance:
+        return None
+
+    try:
+        birth = datetime.strptime(date_naissance, "%Y-%m-%d").date()
+    except ValueError:
+        # Format invalide, mais aussi date inexistante au calendrier (30 février).
+        return None
+
+    reference = today or date.today()
+    if birth > reference or birth.year < 1900:
+        return None
+
+    before_birthday = (reference.month, reference.day) < (birth.month, birth.day)
+    return reference.year - birth.year - (1 if before_birthday else 0)
+
+
 def get_dashboard_stats(db: Session) -> DashboardStats:
     adhesions = db.query(Adhesion).options(selectinload(Adhesion.activities)).all()
     activities = db.query(Activity).options(selectinload(Activity.adhesions)).all()
@@ -522,17 +550,11 @@ def get_dashboard_stats(db: Session) -> DashboardStats:
     children = 0
     adults = 0
     for a in adhesions:
-        if a.date_naissance:
-            try:
-                from datetime import datetime
-                birth = datetime.strptime(a.date_naissance, "%Y-%m-%d")
-                age = (datetime.now() - birth).days // 365
-                if age < settings.ADULT_AGE_THRESHOLD:
-                    children += 1
-                else:
-                    adults += 1
-            except ValueError:
-                adults += 1
+        age = _age_in_years(a.date_naissance)
+        # Âge non calculable (date absente, illisible, future) : compté adulte,
+        # sinon `children + adults` ne totaliserait plus les adhésions.
+        if age is not None and age < settings.ADULT_AGE_THRESHOLD:
+            children += 1
         else:
             adults += 1
 

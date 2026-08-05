@@ -27,14 +27,26 @@ def _make_adhesion(db_session, email="test@example.com", nom="Dupont", prenom="J
     return crud.create_adhesion(db=db_session, adhesion=data)
 
 
-def _birthdate_for_age(age: int) -> str:
-    """Date de naissance donnant `age` révolus, au format attendu par la base.
+def _years_before(reference: date, years: int) -> date:
+    """`reference` moins `years` années, un 29 février étant replié sur le 28."""
+    try:
+        return reference.replace(year=reference.year - years)
+    except ValueError:
+        return reference.replace(year=reference.year - years, day=28)
 
-    Le calcul de `get_dashboard_stats` divise un nombre de jours par 365 : on
-    prend une marge de quelques jours pour rester du bon côté du seuil quelles
-    que soient les années bissextiles traversées.
+
+def _birthdate_for_age(age: int) -> str:
+    """Date de naissance de qui a exactement `age` ans révolus aujourd'hui.
+
+    Pas de marge : `crud._age_in_years` compare des dates civiles, donc la date
+    d'anniversaire elle-même donne l'âge attendu.
     """
-    return (date.today() - timedelta(days=age * 365 + 5)).strftime("%Y-%m-%d")
+    return _years_before(date.today(), age).strftime("%Y-%m-%d")
+
+
+def _birthdate_turning_age_tomorrow(age: int) -> str:
+    """Date de naissance de qui atteint `age` ans demain — il a donc `age - 1` ans."""
+    return _years_before(date.today() + timedelta(days=1), age).strftime("%Y-%m-%d")
 
 
 # ─── Génération des codes d'accès ────────────────────────────────
@@ -438,6 +450,47 @@ class TestDashboardAgeSplit:
     def test_missing_or_invalid_birthdate_counts_as_adult(self, db_session):
         _make_adhesion(db_session, email="vide@example.com", date_naissance=None)
         _make_adhesion(db_session, email="casse@example.com", date_naissance="pas-une-date")
+
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 0
+        assert stats.adults == 2
+
+    def test_child_until_the_birthday_itself(self, db_session):
+        """Le comptage suit le calendrier, pas une division par 365.
+
+        `days // 365` gagnait un jour tous les quatre ans : un adhérent dont le
+        16e anniversaire tombe demain basculait « adulte » plusieurs jours trop
+        tôt, alors que le formulaire lui affiche « Adhésion Enfant ».
+        """
+        _make_adhesion(db_session, email="demain@example.com",
+                       date_naissance=_birthdate_turning_age_tomorrow(16))
+
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 1
+        assert stats.adults == 0
+
+    def test_adult_from_the_birthday(self, db_session):
+        """La borne est incluse côté adulte, comme `membershipCategory` côté front."""
+        _make_adhesion(db_session, email="pile@example.com",
+                       date_naissance=_birthdate_for_age(16))
+
+        stats = crud.get_dashboard_stats(db_session)
+
+        assert stats.children == 0
+        assert stats.adults == 1
+
+    def test_impossible_birthdate_counts_as_adult(self, db_session):
+        """Une date future ou hors calendrier ne doit pas gonfler les enfants.
+
+        `days // 365` donnait un âge négatif pour une date future, donc
+        « enfant ». L'âge n'étant pas calculable, on retombe sur le même
+        traitement qu'une date absente.
+        """
+        _make_adhesion(db_session, email="futur@example.com",
+                       date_naissance=(date.today() + timedelta(days=1)).strftime("%Y-%m-%d"))
+        _make_adhesion(db_session, email="fevrier@example.com", date_naissance="2010-02-30")
 
         stats = crud.get_dashboard_stats(db_session)
 
