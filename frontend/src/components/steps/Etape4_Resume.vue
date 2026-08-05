@@ -71,6 +71,7 @@ import {useRouter} from 'vue-router';
 import type {Activity} from '@/types';
 import { activitiesCost, activityPrice } from '@/pricing';
 import { documentUrl, documentsToSign } from '@/documents';
+import { rememberCode } from '@/family';
 import ConfirmationModal from '../ConfirmationModal.vue';
 import MessageModal from '../MessageModal.vue';
 
@@ -162,12 +163,7 @@ const submitForm = async () => {
     } else {
       const response = await api.post('/api/adhesions', payload);
       const newCode = response.data.code;
-      const recentCodes = JSON.parse(localStorage.getItem('recentCodes') || '[]');
-      recentCodes.unshift(newCode);
-      if (recentCodes.length > 5) {
-        recentCodes.pop();
-      }
-      localStorage.setItem('recentCodes', JSON.stringify(recentCodes));
+      rememberCode(newCode);
       store.lastGeneratedCode = newCode;
     }
     isModalVisible.value = true;

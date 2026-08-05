@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useFormStore } from '@/stores/form';
 import { getAdhesionByCode } from '@/api';
+import { familyContact } from '@/family';
 import FormStepper from '@/components/FormStepper.vue';
 import Etape1_Contact from '@/components/steps/Etape1_Contact.vue';
 import Etape2_InfosPersonnelles from '@/components/steps/Etape2_InfosPersonnelles.vue';
@@ -13,7 +14,16 @@ const store = useFormStore();
 const route = useRoute();
 const isLoading = ref(false);
 
-const stepLabels = ['Contact', 'Informations personnelles', 'Activités', 'Récapitulatif'];
+const allStepLabels = ['Contact', 'Informations personnelles', 'Activités', 'Récapitulatif'];
+
+/**
+ * Le stepper numérote ses entrées par leur position. En mode famille, l'étape 1
+ * n'est pas affichée : il faut donc traduire l'étape du store en position dans la
+ * liste réduite, et l'inverse à la navigation.
+ */
+const stepOffset = computed(() => store.minStep - 1);
+const stepLabels = computed(() => allStepLabels.slice(stepOffset.value));
+const stepperStep = computed(() => store.step - stepOffset.value);
 
 const currentStepComponent = computed(() => {
   switch (store.step) {
@@ -30,17 +40,33 @@ const currentStepComponent = computed(() => {
   }
 });
 
-const onNavigate = (step: number) => {
-  if (step < store.step) {
-    store.step = step;
+const onNavigate = (position: number) => {
+  const target = position + stepOffset.value;
+  if (target < store.step) {
+    store.step = target;
   }
 };
 
 onMounted(async () => {
   const code = route.query.code as string;
   const source = route.query.source as string;
+  // Code du membre de référence d'une famille : on repart d'un formulaire vierge
+  // dont seules les coordonnées sont recopiées, pas une reprise de cette adhésion.
+  const family = route.query.family as string;
 
-  if (code) {
+  if (family) {
+    isLoading.value = true;
+    try {
+      const reference = await getAdhesionByCode(family);
+      store.startFamilyMember(familyContact(reference));
+    } catch (error) {
+      // Sans les coordonnées de référence, le formulaire complet reste utilisable.
+      console.error("Failed to load family reference:", error);
+      store.resetForm();
+    } finally {
+      isLoading.value = false;
+    }
+  } else if (code) {
     isLoading.value = true;
     try {
       const adhesion = await getAdhesionByCode(code);
@@ -63,7 +89,7 @@ onMounted(async () => {
 <template>
   <div class="public-view form-layout">
     <aside class="form-sidebar">
-      <FormStepper :steps="stepLabels" :current-step="store.step" @navigate="onNavigate" />
+      <FormStepper :steps="stepLabels" :current-step="stepperStep" @navigate="onNavigate" />
     </aside>
     <main class="form-content">
       <div v-if="isLoading">Chargement du formulaire...</div>

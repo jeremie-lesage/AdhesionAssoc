@@ -75,6 +75,52 @@ describe('useFormStore', () => {
     })
   })
 
+  describe('startFamilyMember', () => {
+    const contact = {
+      email: 'famille@example.com',
+      telephone: '0102030405',
+      nom_rue: '1 rue des Lilas',
+      code_postal: '21110',
+      ville: 'Fauverney',
+    }
+
+    it('ouvre un formulaire vierge à l’étape 2 avec les coordonnées recopiées', () => {
+      const store = useFormStore()
+      store.setFormData({ nom: 'Dupont', code: 'CODE12345678' })
+
+      store.startFamilyMember(contact)
+
+      expect(store.step).toBe(2)
+      expect(store.familyLocked).toBe(true)
+      expect(store.formData.email).toBe('famille@example.com')
+      expect(store.formData.ville).toBe('Fauverney')
+      // Création, pas reprise : ni identité ni code du membre précédent.
+      expect(store.formData.nom).toBe('')
+      expect(store.formData.code).toBeNull()
+    })
+
+    it('interdit le retour à l’étape 1 de contact', () => {
+      const store = useFormStore()
+      store.startFamilyMember(contact)
+      store.nextStep()
+
+      for (let i = 0; i < 10; i++) store.prevStep()
+
+      expect(store.step).toBe(2)
+    })
+
+    it('relâche le verrou au reset', () => {
+      const store = useFormStore()
+      store.startFamilyMember(contact)
+
+      store.resetForm()
+
+      expect(store.familyLocked).toBe(false)
+      expect(store.minStep).toBe(1)
+      expect(store.formData.email).toBe('')
+    })
+  })
+
   describe('setFormDataForEdit', () => {
     it('repart d’un état vierge avant d’appliquer les données chargées', () => {
       const store = useFormStore()

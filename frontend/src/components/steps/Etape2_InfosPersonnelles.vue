@@ -1,6 +1,11 @@
 <template>
   <div>
     <h2>Étape 2: Informations Personnelles</h2>
+    <p v-if="locked" class="family-notice">
+      Nouveau membre de la famille <strong>{{ formData.email }}</strong>.
+      Les coordonnées ci-dessous sont celles de la famille et ne sont pas modifiables ici :
+      pour les corriger, reprenez le formulaire du premier membre inscrit.
+    </p>
     <form @submit.prevent="nextStep">
       <div>
         <label for="nom">Nom:</label>
@@ -22,26 +27,31 @@
       <div>
         <label for="telephone">Téléphone:</label>
         <input type="tel" id="telephone" ref="telInput" v-model="formData.telephone" autocomplete="tel" placeholder="06 12 34 56 78"
-               @input="telInput?.setCustomValidity('')">
+               :readonly="locked" @input="telInput?.setCustomValidity('')">
       </div>
       <div>
         <label for="nom_rue">Adresse:</label>
-        <input type="text" id="nom_rue" v-model="formData.nom_rue" required autocomplete="address-line1" placeholder="Numéro et nom de rue">
+        <input type="text" id="nom_rue" v-model="formData.nom_rue" required autocomplete="address-line1" placeholder="Numéro et nom de rue"
+               :readonly="locked">
       </div>
       <div>
         <label for="code_postal">Code Postal:</label>
         <input type="text" id="code_postal" ref="codePostalInput" v-model="formData.code_postal" required autocomplete="postal-code"
-               maxlength="5" @input="onCodePostalInput">
+               maxlength="5" :readonly="locked" @input="onCodePostalInput">
       </div>
       <div>
         <label for="ville">Ville:</label>
-        <select v-if="communes.length > 0" id="ville" v-model="formData.ville" required>
+        <!-- `readonly` et non `disabled` : la valeur reste soumise et la contrainte
+             `required` continue d'être satisfaite. Un `<select>` n'accepte pas
+             `readonly`, d'où le champ texte figé en mode famille. -->
+        <input v-if="locked" type="text" id="ville" v-model="formData.ville" required readonly>
+        <select v-else-if="communes.length > 0" id="ville" v-model="formData.ville" required>
           <option value="" disabled>— Sélectionnez une commune —</option>
           <option v-for="commune in communes" :key="commune" :value="commune">{{ commune }}</option>
         </select>
         <input v-else type="text" id="ville" v-model="formData.ville" required autocomplete="address-level2">
       </div>
-      <button @click="prevStep">Précédent</button>
+      <button v-if="!locked" @click="prevStep">Précédent</button>
       <button type="submit">Suivant</button>
     </form>
   </div>
@@ -55,6 +65,8 @@ import api from '@/api';
 
 const store = useFormStore();
 const formData = store.formData;
+// Ajout d'un membre à une famille : coordonnées figées, pas d'étape 1 en arrière.
+const locked = computed(() => store.familyLocked);
 const telInput = ref<HTMLInputElement | null>(null);
 const dateNaissanceInput = ref<HTMLInputElement | null>(null);
 const codePostalInput = ref<HTMLInputElement | null>(null);
@@ -129,7 +141,9 @@ onMounted(async () => {
     // Pas de restriction si la config n'est pas disponible ; le seuil garde son défaut
   }
 
-  if (formData.code_postal.length === 5 && /^\d{5}$/.test(formData.code_postal)) {
+  // En mode famille, la ville est imposée : charger la liste des communes ne
+  // servirait à rien et `autoSelectIfSingle` risquerait de l'effacer.
+  if (!locked.value && formData.code_postal.length === 5 && /^\d{5}$/.test(formData.code_postal)) {
     fetchCommunes(formData.code_postal);
   }
 });
@@ -177,6 +191,20 @@ const prevStep = () => {
 <style scoped>
 /* Même palette que les badges Enfant/Adulte de HomeView, pour que la catégorie
    se lise pareil d'un écran à l'autre. */
+.family-notice {
+  background-color: #e7f3fe;
+  border-left: 6px solid #2196F3;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+input[readonly] {
+  background-color: #f4f4f4;
+  color: #555;
+  cursor: not-allowed;
+}
+
 .membership-badge {
   display: inline-block;
   margin: 0.5rem 0 0;
