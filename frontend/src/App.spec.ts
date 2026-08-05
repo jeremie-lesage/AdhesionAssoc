@@ -40,8 +40,9 @@ describe('App — navigation publique', () => {
 
     const labels = wrapper.findAll('#site-menu li').map((li) => li.text());
     expect(labels).not.toContain('Accueil');
+    // Pas de « Nouveau Formulaire » : l'inscription démarre depuis le bouton
+    // « S'inscrire » de l'accueil, pas depuis la nav.
     expect(labels).toEqual([
-      'Nouveau Formulaire',
       'Planning',
       'Reprendre mon inscription',
       'Administration',

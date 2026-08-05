@@ -19,9 +19,8 @@
     <ul id="site-menu" class="nav-links" :class="{ open: menuOpen }">
       <!-- Pas de lien vers la page courante : sur l'accueil il ne mènerait nulle part -->
       <li v-if="!isHome"><RouterLink to="/">Accueil</RouterLink></li>
-      <li>
-        <button @click="startNewForm" class="nav-button">Nouveau Formulaire</button>
-      </li>
+      <!-- Pas d'entrée « Nouveau Formulaire » : on démarre une inscription par le
+           bouton « S'inscrire » de l'accueil, qui remet le store à zéro. -->
       <li><RouterLink to="/planning">Planning</RouterLink></li>
       <li><RouterLink to="/load">Reprendre mon inscription</RouterLink></li>
       <li><RouterLink to="/admin">Administration</RouterLink></li>
@@ -32,12 +31,9 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router';
-import { useFormStore } from '@/stores/form';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
 
-const router = useRouter();
 const route = useRoute();
-const formStore = useFormStore();
 
 const menuOpen = ref(false);
 
@@ -55,11 +51,6 @@ watch([isAdminRoute, isWideRoute], ([isAdmin, isWide]) => {
 watch(() => route.path, () => {
   menuOpen.value = false;
 });
-
-const startNewForm = () => {
-  formStore.resetForm();
-  router.push('/adhesion');
-};
 </script>
 
 <style scoped>
@@ -83,22 +74,6 @@ const startNewForm = () => {
 .nav-links li + li::before {
   content: '|';
   color: var(--color-border);
-}
-
-.nav-button {
-  background: none;
-  border: none;
-  font-family: inherit;
-  font-size: inherit;
-  color: var(--color-primary);
-  font-weight: 500;
-  padding: 8px 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-.nav-button:hover {
-  background-color: var(--color-hover);
 }
 
 .nav-toggle {
@@ -146,8 +121,7 @@ const startNewForm = () => {
 
   /* Les liens sont inline par défaut : sans display:block la zone tactile
      ne fait pas la largeur du panneau et le padding vertical est ignoré. */
-  .nav-links a,
-  .nav-links .nav-button {
+  .nav-links a {
     display: block;
     width: 100%;
     box-sizing: border-box;

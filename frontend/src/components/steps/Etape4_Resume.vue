@@ -177,12 +177,13 @@ const submitForm = async () => {
   }
 };
 
-// La modale de confirmation porte déjà le code d'accès et les documents à signer :
-// retour direct à l'accueil, création comme modification.
+// La modale de confirmation porte déjà le code d'accès et les documents à signer.
+// Retour vers « Vos demandes d'inscription » plutôt que l'accueil : l'adhésion
+// qui vient d'être créée y figure, et c'est de là qu'on ajoute le membre suivant.
 const handleModalClose = () => {
   isModalVisible.value = false;
   store.resetForm();
-  router.push('/');
+  router.push('/load');
 };
 </script>
 
