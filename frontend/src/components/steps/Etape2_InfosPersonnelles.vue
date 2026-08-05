@@ -14,6 +14,10 @@
         <label for="date_naissance">Date de Naissance:</label>
         <input type="date" id="date_naissance" ref="dateNaissanceInput" v-model="formData.date_naissance" required autocomplete="bday"
                min="1900-01-01" :max="todayStr" @input="dateNaissanceInput?.setCustomValidity('')">
+        <!-- Indication seule : la catégorie ne filtre pas les activités de l'étape 3 -->
+        <p v-if="membership" class="membership-badge" :class="`badge-${membership}`">
+          {{ membershipLabel(membership) }}
+        </p>
       </div>
       <div>
         <label for="telephone">Téléphone:</label>
@@ -44,8 +48,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useFormStore } from '@/stores/form';
+import { membershipCategory, membershipLabel } from '@/age';
 import api from '@/api';
 
 const store = useFormStore();
@@ -54,8 +59,14 @@ const telInput = ref<HTMLInputElement | null>(null);
 const dateNaissanceInput = ref<HTMLInputElement | null>(null);
 const codePostalInput = ref<HTMLInputElement | null>(null);
 const postalCodePrefix = ref('');
+// Défaut aligné sur `settings.ADULT_AGE_THRESHOLD`, remplacé par /api/config.
+const adultAgeThreshold = ref(16);
 const communes = ref<string[]>([]);
 const todayStr = new Date().toISOString().split('T')[0];
+
+const membership = computed(() =>
+  membershipCategory(formData.date_naissance, adultAgeThreshold.value),
+);
 
 const communesCache: Record<string, string[]> = {};
 
@@ -111,8 +122,11 @@ onMounted(async () => {
   try {
     const res = await api.get('/api/config');
     postalCodePrefix.value = res.data.postal_code_prefix;
+    if (typeof res.data.adult_age_threshold === 'number') {
+      adultAgeThreshold.value = res.data.adult_age_threshold;
+    }
   } catch {
-    // Pas de restriction si la config n'est pas disponible
+    // Pas de restriction si la config n'est pas disponible ; le seuil garde son défaut
   }
 
   if (formData.code_postal.length === 5 && /^\d{5}$/.test(formData.code_postal)) {
@@ -161,6 +175,27 @@ const prevStep = () => {
 </script>
 
 <style scoped>
+/* Même palette que les badges Enfant/Adulte de HomeView, pour que la catégorie
+   se lise pareil d'un écran à l'autre. */
+.membership-badge {
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-child {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-adult {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
 select {
   width: calc(100% - 1.5rem);
   padding: 0.8rem;
