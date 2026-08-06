@@ -49,6 +49,19 @@ export const formatSchedule = (activity: Activity): string | null => {
   return `${start} – ${toFrenchTime(activity.end_time)}`;
 };
 
+/**
+ * `'Lundi 17h00 – 18h30'`, ou la seule partie connue, ou `null` si le créneau
+ * est entièrement vide.
+ *
+ * Utile là où les activités ne sont **pas** groupées par jour (l'accueil) : dans
+ * `Etape3_Activites` le jour est déjà porté par l'intertitre du groupe, il n'y a
+ * que `formatSchedule` à afficher.
+ */
+export const dayAndTime = (activity: Activity): string | null => {
+  const parts = [dayLabel(activity), formatSchedule(activity)].filter(Boolean);
+  return parts.length ? parts.join(' ') : null;
+};
+
 export interface DayGroup {
   /** Clé stable pour le `v-for`. */
   key: string;

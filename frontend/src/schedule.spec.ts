@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DAY_LABELS, dayLabel, formatSchedule, groupByDay } from './schedule';
+import { DAY_LABELS, dayAndTime, dayLabel, formatSchedule, groupByDay } from './schedule';
 import type { Activity } from './types';
 
 const activity = (over: Partial<Activity> = {}): Activity => ({
@@ -60,6 +60,31 @@ describe('formatSchedule', () => {
 
   it('vaut null sans heure de début', () => {
     expect(formatSchedule(activity({ end_time: '18:00:00' }))).toBeNull();
+  });
+});
+
+describe('dayAndTime', () => {
+  it('assemble le jour et la plage horaire', () => {
+    expect(dayAndTime(activity({ day_of_week: 0, start_time: '17:00:00', end_time: '18:30:00' })))
+      .toBe('Lundi 17h00 – 18h30');
+  });
+
+  it('donne le jour seul quand aucune heure n’est saisie', () => {
+    expect(dayAndTime(activity({ day_of_week: 2 }))).toBe('Mercredi');
+  });
+
+  it('donne l’horaire seul quand le jour manque', () => {
+    // Une activité peut n'avoir qu'un créneau connu : mieux vaut l'afficher
+    // que taire l'information parce que le jour n'est pas renseigné.
+    expect(dayAndTime(activity({ start_time: '20:00:00' }))).toBe('20h00');
+  });
+
+  it('vaut null quand ni le jour ni l’heure ne sont connus', () => {
+    expect(dayAndTime(activity())).toBeNull();
+  });
+
+  it('ignore un jour hors bornes comme le fait dayLabel', () => {
+    expect(dayAndTime(activity({ day_of_week: 9, start_time: '10:00' }))).toBe('10h00');
   });
 });
 

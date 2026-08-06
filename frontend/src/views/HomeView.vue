@@ -50,7 +50,9 @@
             <span v-if="activity.is_adult_activity" class="activity-badge badge-adult">Adulte</span>
           </div>
           <p v-if="activity.description" class="activity-desc">{{ activity.description }}</p>
-          <p v-if="activity.location" class="activity-location">{{ activity.location }}</p>
+          <!-- Le lieu seul laissait passer les activités sans lieu mais avec un
+               créneau : la ligne s'affiche dès que l'une des deux moitiés existe. -->
+          <p v-if="activityContext(activity)" class="activity-location">{{ activityContext(activity) }}</p>
           <div class="activity-footer">
             <div class="activity-prices">
               <span v-if="activity.resident_price != null" class="price">{{ activity.resident_price }}€ <small>résident</small></span>
@@ -79,6 +81,7 @@
 import { ref, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useFormStore } from '@/stores/form';
+import { dayAndTime } from '@/schedule';
 import api from '@/api';
 import type { Activity } from '@/types';
 
@@ -90,6 +93,12 @@ const startNewForm = () => {
   formStore.resetForm();
   router.push('/adhesion');
 };
+
+/**
+ * Lieu puis créneau, séparés comme dans `Etape3_Activites`. Le jour est explicite
+ * ici : contrairement au formulaire, l'accueil ne groupe pas par jour.
+ */
+const activityContext = (a: Activity) => [a.location, dayAndTime(a)].filter(Boolean).join(' · ');
 
 const isFull = (a: Activity) => a.max_participants > 0 && a.current_participants >= a.max_participants;
 
