@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM alpine:3.22
 
 # `openssh-client` + `sshpass` : le transfert passe en SFTP, le cluster OVH
 # n'implémentant pas AUTH TLS (cf. backup.sh). `curl` reste utile pour diagnostiquer
