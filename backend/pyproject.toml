@@ -10,7 +10,6 @@ dependencies = [
     "bcrypt>=5.0.0",
     "pydantic[email]>=2.11.7",
     "pydantic-settings>=2.0.0",
-    "psycopg2-binary",
     "sqlalchemy",
     "sib-api-v3-sdk",
     "alembic>=1.18.4",
@@ -18,6 +17,7 @@ dependencies = [
     # Déjà tiré par fastapi[all] pour les templates, mais déclaré ici pour ne pas
     # dépendre d'un extra : sans lui, l'import échoue au démarrage.
     "jinja2>=3.1",
+    "psycopg[binary]>=3.3.6",
 ]
 
 [dependency-groups]
