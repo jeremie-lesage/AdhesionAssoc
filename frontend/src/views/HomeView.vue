@@ -74,6 +74,33 @@
         </div>
       </div>
     </section>
+
+    <!-- Hors du `v-if` des activités : ces liens ne dépendent pas de l'API. -->
+    <section class="more-section">
+      <h2>En savoir plus</h2>
+      <div class="more-links">
+        <a
+          v-for="link in externalLinks"
+          :key="link.href"
+          :href="link.href"
+          class="btn btn-outline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {{ link.label }}
+          <i class="pi pi-external-link" aria-hidden="true" />
+          <span class="sr-only">(nouvelle fenêtre)</span>
+        </a>
+        <RouterLink to="/planning" class="btn btn-outline">
+          Planning des activités
+          <i class="pi pi-calendar" aria-hidden="true" />
+        </RouterLink>
+      </div>
+      <p class="more-hint">
+        Les descriptifs détaillés sont sur le site du Foyer Rural ; le planning
+        récapitule les créneaux de la semaine.
+      </p>
+    </section>
   </div>
 </template>
 
@@ -87,6 +114,12 @@ import type { Activity } from '@/types';
 
 const router = useRouter();
 const formStore = useFormStore();
+
+/** Pages du site vitrine, hors de cette application. */
+const externalLinks = [
+  { label: 'Activités enfant', href: 'https://foyerruralfauverney.fr/activites/activites-enfant/' },
+  { label: 'Activités adulte', href: 'https://foyerruralfauverney.fr/activites/activites-adulte/' },
+] as const;
 const activities = ref<Activity[]>([]);
 
 const startNewForm = () => {
@@ -380,6 +413,35 @@ onMounted(async () => {
   color: #999;
 }
 
+/* En savoir plus */
+.more-section {
+  padding: 1.5rem 1.5rem 2rem;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.more-links {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Les `.btn` sont dimensionnés pour le hero : ici on veut des liens secondaires. */
+.more-links .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.95rem;
+}
+
+.more-hint {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 1rem 0 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hero h1 {
@@ -392,6 +454,11 @@ onMounted(async () => {
 
   .activities-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Trois liens côte à côte deviennent illisibles sur un téléphone. */
+  .more-links {
+    flex-direction: column;
   }
 }
 
